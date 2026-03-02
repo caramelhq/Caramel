@@ -82,12 +82,21 @@ export function getAlreadyEnabledLayout(moduleName: string) {
 
 // Confirmation before resetting a module layout ──────────
 
-export function getResetLayout(confirmId: string, cancelId: string) {
+export function getResetLayout(confirmId: string, cancelId: string, deletions: string[]) {
+    const deletionsText = deletions.map(d => {
+        if (d.startsWith('delete:')) return `${Emojis.disabled_setting_emoji} ${d.slice(7)}`;
+        if (d.startsWith('unlink:')) return `${Emojis.static_setting_emoji} ${d.slice(7)} *(linked manually, will be unlinked)*`;
+        return `${Emojis.static_setting_emoji} ${d}`;
+    }).join('\n');
+
     return flaggedResponse([
         {
             type: 17,
             components: [
-                { type: 10, content: `${Emojis.reset_module_emoji} Are you sure you want to factory reset this module?` },
+                {
+                    type: 10,
+                    content: `${Emojis.reset_module_emoji} **Factory reset this module?**\n\nThe following changes will be applied to your server:\n\n${deletionsText}\n\n-# This action cannot be undone.`
+                },
                 divider(),
                 {
                     type: 1,

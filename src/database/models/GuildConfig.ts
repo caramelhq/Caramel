@@ -52,4 +52,19 @@ export class GuildConfig extends Model {
 
     @Column({ type: DataType.INTEGER, defaultValue: 5, field: 'ban_threshold' })
     declare banThreshold: number;
+
+    
+    // Modules channels fields ──────────
+
+    @Column({ type: DataType.BOOLEAN, defaultValue: false, field: 'vanity_channel_created_by_bot' })
+    declare vanityChannelCreatedByBot: boolean;
+
+    @Column({ type: DataType.BOOLEAN, defaultValue: false, field: 'vanity_role_created_by_bot' })
+    declare vanityRoleCreatedByBot: boolean;
+
+    @Column({ type: DataType.BOOLEAN, defaultValue: false, field: 'mod_channel_created_by_bot' })
+    declare modChannelCreatedByBot: boolean;
+
+    @Column({ type: DataType.BOOLEAN, defaultValue: false, field: 'mod_role_created_by_bot' })
+    declare modRoleCreatedByBot: boolean;
 }

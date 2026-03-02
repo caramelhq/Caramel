@@ -23,20 +23,54 @@ function getDisplayName(moduleValue: string) {
 
 // Reset payloads per module ──────────
 
-const RESET_MAP: Record<string, (guildId: string) => Promise<void>> = {
-    vanity: async (guildId) => {
+const RESET_MAP: Record<string, (guildId: string, client: any) => Promise<void>> = {
+    vanity: async (guildId, client) => {
         const config = await GuildConfig.findByPk(guildId);
-        if (config) {
-            await config.update({ vanityString: null, vanityRoleId: null, vanityChannelId: null, vanityModule: false });
-            await CacheManager.syncGuild(guildId, config);
+        if (!config) return;
+
+        if (config.vanityChannelId && config.vanityChannelCreatedByBot) {
+            const channel = await client.channels.fetch(config.vanityChannelId).catch(() => null);
+            if (channel?.isTextBased()) {
+                const webhooks = await channel.fetchWebhooks().catch(() => null);
+                const caramelWh = webhooks?.find((wh: any) => wh.name === 'Caramel');
+                await caramelWh?.delete('Module reset').catch(() => {});
+            }
+            await channel?.delete('Caramel - Vanity module reset').catch(() => {});
         }
+
+        if (config.vanityRoleId && config.vanityRoleCreatedByBot) {
+            const guild = client.guilds.cache.get(guildId);
+            const role = await guild?.roles.fetch(config.vanityRoleId).catch(() => null);
+            await role?.delete('Caramel - Vanity module reset').catch(() => {});
+        }
+
+        await config.update({
+            vanityString: null, vanityRoleId: null, vanityChannelId: null,
+            vanityModule: false, vanityRoleCreatedByBot: false, vanityChannelCreatedByBot: false
+        });
+        await CacheManager.syncGuild(guildId, config);
     },
-    mod: async (guildId) => {
+    mod: async (guildId, client) => {
         const config = await GuildConfig.findByPk(guildId);
-        if (config) {
-            await config.update({ modLogChannelId: null, modModule: false, modThresholdsEnabled: false, muteThreshold: 3, banThreshold: 5 });
-            await CacheManager.syncGuild(guildId, config);
+        if (!config) return;
+
+        if (config.modLogChannelId && config.modChannelCreatedByBot) {
+            const channel = await client.channels.fetch(config.modLogChannelId).catch(() => null);
+            await channel?.delete('Caramel - Mod module reset').catch(() => {});
         }
+
+        if (config.mutedRoleId && config.modRoleCreatedByBot) {
+            const guild = client.guilds.cache.get(guildId);
+            const role = await guild?.roles.fetch(config.mutedRoleId).catch(() => null);
+            await role?.delete('Caramel - Mod module reset').catch(() => {});
+        }
+
+        await config.update({
+            modLogChannelId: null, modModule: false, modThresholdsEnabled: false,
+            muteThreshold: 3, banThreshold: 5, mutedRoleId: null,
+            modChannelCreatedByBot: false, modRoleCreatedByBot: false
+        });
+        await CacheManager.syncGuild(guildId, config);
     }
 };
 
@@ -97,6 +131,54 @@ async function createPrivateChannel(guild: Guild, name: string) {
             { id: guild.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] }
         ]
     });
+}
+
+
+// Builds the list of server resources that will be deleted on reset ──────────
+
+async function getResetDeletions(moduleName: string, guildId: string, client: any): Promise<string[]> {
+    const config = await GuildConfig.findByPk(guildId);
+    if (!config) return [];
+
+    const deletions: string[] = [];
+
+    if (moduleName === 'vanity') {
+        if (config.vanityChannelId) {
+            if (config.vanityChannelCreatedByBot) {
+                deletions.push(`delete:Channel <#${config.vanityChannelId}>`);
+            } else {
+                deletions.push(`unlink:Channel <#${config.vanityChannelId}>`);
+            }
+        }
+        if (config.vanityRoleId) {
+            if (config.vanityRoleCreatedByBot) {
+                deletions.push(`delete:Role <@&${config.vanityRoleId}>`);
+            } else {
+                deletions.push(`unlink:Role <@&${config.vanityRoleId}>`);
+            }
+        }
+    }
+
+    if (moduleName === 'mod') {
+        if (config.modLogChannelId) {
+            if (config.modChannelCreatedByBot) {
+                deletions.push(`delete:Channel <#${config.modLogChannelId}>`);
+            } else {
+                deletions.push(`unlink:Channel <#${config.modLogChannelId}>`);
+            }
+        }
+        if (config.mutedRoleId) {
+            if (config.modRoleCreatedByBot) {
+                deletions.push(`delete:Role <@&${config.mutedRoleId}>`);
+            } else {
+                deletions.push(`unlink:Role <@&${config.mutedRoleId}>`);
+            }
+        }
+    }
+
+    if (deletions.length === 0) deletions.push('unlink:Configuration data only');
+
+    return deletions;
 }
 
 
@@ -263,20 +345,20 @@ export class ModuleCommand extends Subcommand {
                 summaryActions.push(`Keyword set to \`${keyword}\``);
 
                 if (roleResult.resolvedId) {
-                    config.vanityRoleId = roleResult.resolvedId;
+                    config.vanityRoleId = roleResult.resolvedId; config.vanityRoleCreatedByBot = false;
                     summaryActions.push(`Role linked: <@&${roleResult.resolvedId}>`);
                 } else {
                     const newRole = await guild!.roles.create({ name: roleRaw || `Vanity Role [${guild!.name}]` });
-                    config.vanityRoleId = newRole.id;
+                    config.vanityRoleId = newRole.id; config.vanityRoleCreatedByBot = true;
                     summaryActions.push(`Role created: <@&${newRole.id}>`);
                 }
 
                 if (channelResult.resolvedId) {
-                    config.vanityChannelId = channelResult.resolvedId;
+                    config.vanityChannelId = channelResult.resolvedId; config.vanityChannelCreatedByBot = false;
                     summaryActions.push(`Channel linked: <#${channelResult.resolvedId}>`);
                 } else {
                     const newChannel = await createPrivateChannel(guild!, channelRaw || 'vanity-logs');
-                    config.vanityChannelId = newChannel.id;
+                    config.vanityChannelId = newChannel.id; config.vanityChannelCreatedByBot = true;
                     summaryActions.push(`Channel created: <#${newChannel.id}>`);
                 }
             }
@@ -326,16 +408,16 @@ export class ModuleCommand extends Subcommand {
             [channelResult.action, roleResult.action],
             async (config, summaryActions) => {
                 if (channelResult.resolvedId) {
-                    config.modLogChannelId = channelResult.resolvedId;
+                    config.modLogChannelId = channelResult.resolvedId; config.modChannelCreatedByBot = false;
                     summaryActions.push(`Channel linked: <#${channelResult.resolvedId}>`);
                 } else {
                     const newChannel = await createPrivateChannel(guild!, channelRaw || 'mod-logs');
-                    config.modLogChannelId = newChannel.id;
+                    config.modLogChannelId = newChannel.id; config.modChannelCreatedByBot = true;
                     summaryActions.push(`Channel created: <#${newChannel.id}>`);
                 }
 
                 if (roleResult.resolvedId) {
-                    config.mutedRoleId = roleResult.resolvedId;
+                    config.mutedRoleId = roleResult.resolvedId; config.modRoleCreatedByBot = false;
                     summaryActions.push(`Role linked: <@&${roleResult.resolvedId}>`);
                 } else {
                     const newRole = await guild!.roles.create({
@@ -343,7 +425,7 @@ export class ModuleCommand extends Subcommand {
                         color:  0x818386,
                         reason: 'Caramel - Muted role auto-created'
                     });
-                    config.mutedRoleId = newRole.id;
+                    config.mutedRoleId = newRole.id; config.modRoleCreatedByBot = true;
                     summaryActions.push(`Role created: <@&${newRole.id}>`);
                 }
             }
@@ -438,7 +520,9 @@ export class ModuleCommand extends Subcommand {
         const confirmId  = `confirm_${interaction.id}`;
         const cancelId   = `cancel_${interaction.id}`;
 
-        await interaction.reply({ ...getResetLayout(confirmId, cancelId), ephemeral: false });
+        const deletions = await getResetDeletions(moduleName, guildId!, this.container.client);
+
+        await interaction.reply({ ...getResetLayout(confirmId, cancelId, deletions), ephemeral: false });
 
         const response  = await interaction.fetchReply();
         const collector = response.createMessageComponentCollector({
@@ -450,7 +534,7 @@ export class ModuleCommand extends Subcommand {
         collector.on('collect', async (i) => {
             if (i.customId === confirmId) {
                 try {
-                    await RESET_MAP[moduleName]?.(guildId!);
+                    await RESET_MAP[moduleName]?.(guildId!, this.container.client);
                     return i.update({ ...getSuccessLayout(moduleName) }).then(() => collector.stop('success'));
                 } catch (error) {
                     return i.reply({ content: '`🔴` Error resetting.', ephemeral: false });
