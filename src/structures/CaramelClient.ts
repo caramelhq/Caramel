@@ -76,7 +76,7 @@ export class CaramelClient extends SapphireClient {
     public async start(token: string) {
         try {
             await super.login(token);
-            container.logger.info(`🦆 [BOT] Online as ${this.user?.tag}`);
+            container.logger.info(`🍬 [BOT] Online as ${this.user?.tag}`);
         } catch (error) {
             container.logger.error('🔴 [CLIENT] Login failed:');
             console.error(error);

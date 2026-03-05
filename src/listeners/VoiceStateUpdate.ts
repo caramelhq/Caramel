@@ -21,11 +21,8 @@ export class VoiceStateUpdateListener extends Listener<typeof Events.VoiceStateU
         if (!newState.channel || !member || member.user.bot) return;
         if (oldState.channelId === newState.channelId) return;
 
-        const { SilentBan } = (this.container as any).models ?? {};
-        if (!SilentBan) return;
-
         try {
-            const banned = await isSilentBanned(guild.id, member.id, SilentBan);
+            const banned = await isSilentBanned(guild.id, member.id);
             if (!banned) return;
 
             const { rateLimited, timeoutMs } = await trackVoiceJoin(guild.id, member.id);

@@ -1,7 +1,7 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Listener } from '@sapphire/framework';
 import { Events, Role } from 'discord.js';
-import { GuildConfig } from '../database/models/GuildConfig';
+import { prisma } from '../database/db';
 import { CacheManager } from '../database/CacheManager';
 
 
@@ -15,29 +15,27 @@ export class GuildRoleDeleteListener extends Listener {
         const guildId = role.guild.id;
 
         try {
-            const config = await GuildConfig.findOne({ where: { guildId } });
+            const config = await prisma.guildConfig.findUnique({ where: { guildId } });
             if (!config) return;
 
-            let changed = false;
+            const update: Record<string, any> = {};
 
             if (config.mutedRoleId === role.id) {
-                config.mutedRoleId = null;
-                config.modModule = false;
-                changed = true;
+                update.mutedRoleId = null;
+                update.modModule   = false;
                 this.container.logger.info(`[ROLE-DELETE] Muted role deleted in ${role.guild.name}, clearing from config`);
             }
 
             if (config.vanityRoleId === role.id) {
-                config.vanityRoleId = null;
-                config.vanityModule = false;
-                changed = true;
+                update.vanityRoleId = null;
+                update.vanityModule = false;
                 this.container.logger.info(`[ROLE-DELETE] Vanity role deleted in ${role.guild.name}, clearing from config`);
             }
 
-            if (!changed) return;
+            if (Object.keys(update).length === 0) return;
 
-            await config.save();
-            await CacheManager.syncGuild(guildId, config);
+            const updated = await prisma.guildConfig.update({ where: { guildId }, data: update });
+            await CacheManager.syncGuild(guildId, updated);
         } catch (error) {
             this.container.logger.error(`[ROLE-DELETE] Error handling role deletion in ${role.guild.name}:`, error);
         }

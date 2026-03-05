@@ -1,4 +1,4 @@
-import type { GuildConfig } from '../../database/models/GuildConfig';
+import type { GuildConfig } from '@prisma/client';
 import type { Guild } from 'discord.js';
 import { Emojis } from '../constants/emojis';
 
@@ -224,7 +224,7 @@ export const getModuleLayout = (moduleName: string, config: GuildConfig, guild: 
 
 // Module welcome message layout ──────────
 
-export function getVanityWelcomeLayout(memberId: string, roleId: string, avatarURL: string) {
+export function getVanityWelcomeLayout(memberId: string, roleId: string, avatarURL: string, vanityString: string) {
     return {
         flags: 32768,
         components: [
@@ -236,7 +236,7 @@ export function getVanityWelcomeLayout(memberId: string, roleId: string, avatarU
                         type: 9,
                         components: [{
                             type: 10,
-                            content: `# ¡Gracias por apoyarnos! ${Emojis.vanity_welcome_emoji}\n¡Hey, <@${memberId}>! Te agradecemos por promocionar nuestro\nservidor en tu perfil, el **meetspace** te luce muy bien.\n\n> Has recibido el rol: <@&${roleId}>\n\n-# Si te retiras la vanity, perderás el rol automáticamente`
+                            content: `# Thanks for the support! ${Emojis.vanity_welcome_emoji}\nHey, <@${memberId}>! We appreciate you promoting\nour server on your profile, **${vanityString}** looks great on you.\n\n> You've received the role: <@&${roleId}>\n\n-# If you remove the vanity, you'll lose the role automatically`
                         }],
                         accessory: { type: 11, media: { url: avatarURL } }
                     }

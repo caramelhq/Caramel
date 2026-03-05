@@ -28,7 +28,7 @@ export function setupVanityWorker() {
                 const member = await guild.members.fetch(job.data.memberId).catch(() => null);
                 if (!member) return;
 
-                await checkVanity(member);
+                await checkVanity(member, job.data.hasVanity);
             } catch (error) {
                 logger.error(`[VANITY-WORKER] Critical failure in job ${job.id}:`, error);
                 throw error;

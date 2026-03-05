@@ -1,7 +1,6 @@
 import { container } from '@sapphire/framework';
 import { Guild, TextChannel } from 'discord.js';
-import { ModLog } from '../../database/models/ModLog';
-import { ActiveMute } from '../../database/models/ActiveMute';
+import { prisma } from '../../database/db';
 import { CacheManager } from '../../database/CacheManager';
 import { getModLogLayout, getModDMLayout, type ModAction } from './layouts';
 
@@ -45,14 +44,16 @@ export async function sendModLog(data: {
     warnCount?: number
 }) {
     try {
-        await ModLog.create({
-            guildId: data.guildId,
-            userId: data.userId,
-            moderatorId: data.moderatorId,
-            action: data.action,
-            reason: data.reason ?? null,
-            duration: data.duration ?? null,
-            expiresAt: data.expiresAt ?? null
+        await prisma.modLog.create({
+            data: {
+                guildId:     data.guildId,
+                userId:      data.userId,
+                moderatorId: data.moderatorId,
+                action:      data.action,
+                reason:      data.reason ?? null,
+                duration:    data.duration ?? null,
+                expiresAt:   data.expiresAt ?? null,
+            }
         });
 
         const { modLogChannelId } = await CacheManager.getModConfig(data.guildId);
@@ -81,7 +82,9 @@ export async function checkThresholds(data: {
         const { modThresholdsEnabled, muteThreshold, banThreshold } = await CacheManager.getModConfig(data.guildId);
         if (!modThresholdsEnabled) return;
 
-        const warnCount = await ModLog.count({ where: { guildId: data.guildId, userId: data.userId, action: 'warn' } });
+        const warnCount = await prisma.modLog.count({
+            where: { guildId: data.guildId, userId: data.userId, action: 'warn' }
+        });
 
         if (warnCount >= banThreshold) {
             const member = await data.guild.members.fetch(data.userId).catch(() => null);
@@ -116,12 +119,10 @@ export async function applyMute(data: {
         const member = await data.guild.members.fetch(data.userId).catch(() => null);
         if (!member) return;
 
-        await ActiveMute.upsert({
-            guildId: data.guildId,
-            userId: data.userId,
-            moderatorId: data.moderatorId,
-            reason: data.reason ?? null,
-            expiresAt: data.expiresAt ?? null
+        await prisma.activeMute.upsert({
+            where:  { mute_guild_user_unique: { guildId: data.guildId, userId: data.userId } },
+            create: { guildId: data.guildId, userId: data.userId, moderatorId: data.moderatorId, reason: data.reason ?? null, expiresAt: data.expiresAt ?? null },
+            update: { moderatorId: data.moderatorId, reason: data.reason ?? null, expiresAt: data.expiresAt ?? null },
         });
 
         const timeoutMs = data.expiresAt

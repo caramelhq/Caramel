@@ -1,0 +1,124 @@
+// ─────────────────────────────────────────────
+//  Caramel – Prisma Schema
+// ─────────────────────────────────────────────
+
+generator client {
+    provider = "prisma-client-js"
+    engineType = "binary"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+
+// ─────────────────────────────────────────────
+//  GuildConfig
+// ─────────────────────────────────────────────
+
+model GuildConfig {
+    guildId     String  @id @map("guild_id")
+
+    // Vanity module ──────────
+    vanityString              String?  @map("vanity_string")
+    vanityRoleId              String?  @map("vanity_role_id")
+    vanityChannelId           String?  @map("vanity_channel_id")
+    vanityLogChannel          String?  @map("vanity_log_channel")
+    vanityModule              Boolean  @default(false) @map("vanity_module")
+    vanityChannelCreatedByBot Boolean  @default(false) @map("vanity_channel_created_by_bot")
+    vanityRoleCreatedByBot    Boolean  @default(false) @map("vanity_role_created_by_bot")
+
+    // Moderation module ──────────
+    modLogChannelId        String?  @map("mod_log_channel_id")
+    modModule              Boolean  @default(false) @map("mod_module")
+    modThresholdsEnabled   Boolean  @default(false) @map("mod_thresholds_enabled")
+    mutedRoleId            String?  @map("muted_role_id")
+    muteThreshold          Int      @default(3) @map("mute_threshold")
+    banThreshold           Int      @default(5) @map("ban_threshold")
+    modChannelCreatedByBot Boolean  @default(false) @map("mod_channel_created_by_bot")
+    modRoleCreatedByBot    Boolean  @default(false) @map("mod_role_created_by_bot")
+
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@map("guild_configs")
+}
+
+
+// ─────────────────────────────────────────────
+//  SilentBan
+// ─────────────────────────────────────────────
+
+model SilentBan {
+    id          Int      @id @default(autoincrement())
+    guildId     String   @map("guild_id")
+    userId      String   @map("user_id")
+    moderatorId String   @map("moderator_id")
+    reason      String?  @db.VarChar(500)
+    expiresAt   DateTime? @map("expires_at")
+    createdAt   DateTime @default(now()) @map("created_at")
+    updatedAt   DateTime @updatedAt @map("updated_at")
+
+    @@unique([guildId, userId], name: "guild_user_unique")
+    @@index([guildId, userId])
+    @@map("silent_bans")
+}
+
+
+// ─────────────────────────────────────────────
+//  WarnLog
+// ─────────────────────────────────────────────
+
+model WarnLog {
+    id          Int      @id @default(autoincrement())
+    guildId     String   @map("guild_id")
+    userId      String   @map("user_id")
+    moderatorId String   @map("moderator_id")
+    reason      String?  @db.VarChar(500)
+    createdAt   DateTime @default(now()) @map("created_at")
+    updatedAt   DateTime @updatedAt @map("updated_at")
+
+    @@index([guildId, userId], name: "warn_guild_user")
+    @@map("warn_logs")
+}
+
+
+// ─────────────────────────────────────────────
+//  ModLog
+// ─────────────────────────────────────────────
+
+model ModLog {
+    id          Int      @id @default(autoincrement())
+    guildId     String   @map("guild_id")
+    userId      String   @map("user_id")
+    moderatorId String   @map("moderator_id")
+    action      String
+    reason      String?  @db.VarChar(500)
+    duration    String?
+    expiresAt   DateTime? @map("expires_at")
+    createdAt   DateTime @default(now()) @map("created_at")
+    updatedAt   DateTime @updatedAt @map("updated_at")
+
+    @@index([guildId, userId], name: "modlog_guild_user")
+    @@map("mod_logs")
+}
+
+
+// ─────────────────────────────────────────────
+//  ActiveMute
+// ─────────────────────────────────────────────
+
+model ActiveMute {
+    id          Int      @id @default(autoincrement())
+    guildId     String   @map("guild_id")
+    userId      String   @map("user_id")
+    moderatorId String   @map("moderator_id")
+    reason      String?  @db.VarChar(500)
+    expiresAt   DateTime? @map("expires_at")
+    createdAt   DateTime @default(now()) @map("created_at")
+    updatedAt   DateTime @updatedAt @map("updated_at")
+
+    @@unique([guildId, userId], name: "mute_guild_user_unique")
+    @@index([guildId, userId])
+    @@map("active_mutes")
+}

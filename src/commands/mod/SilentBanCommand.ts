@@ -74,8 +74,6 @@ export class SilentBanCommand extends Subcommand {
 
     public async chatInputAdd(interaction: Subcommand.ChatInputCommandInteraction) {
         await interaction.deferReply({ ephemeral: false });
-        const { SilentBan } = (this.container as any).models ?? {};
-        if (!SilentBan) return interaction.editReply('`❌` Silent ban system is unavailable.');
 
         const target   = interaction.options.getUser('user', true);
         const duration = interaction.options.getString('duration');
@@ -87,7 +85,7 @@ export class SilentBanCommand extends Subcommand {
         const durationMs = duration ? DURATION_MAP[duration] : null;
 
         try {
-            await addSilentBan(interaction.guildId!, target.id, interaction.user.id, reason, durationMs, SilentBan);
+            await addSilentBan(interaction.guildId!, target.id, interaction.user.id, reason, durationMs);
             return interaction.editReply(getSilentBanLayout('add', { userTag: target.username, duration: duration ?? 'Permanent', reason }));
         } catch (error) {
             this.container.logger.error(error);
@@ -100,11 +98,10 @@ export class SilentBanCommand extends Subcommand {
 
     public async chatInputRemove(interaction: Subcommand.ChatInputCommandInteraction) {
         await interaction.deferReply({ ephemeral: false });
-        const { SilentBan } = (this.container as any).models ?? {};
         const target = interaction.options.getUser('user', true);
 
         try {
-            await removeSilentBan(interaction.guildId!, target.id, SilentBan);
+            await removeSilentBan(interaction.guildId!, target.id);
             return interaction.editReply(getSilentBanLayout('remove', { userTag: target.username }));
         } catch (error) {
             this.container.logger.error(error);
@@ -117,13 +114,12 @@ export class SilentBanCommand extends Subcommand {
 
     public async chatInputList(interaction: Subcommand.ChatInputCommandInteraction) {
         await interaction.deferReply({ ephemeral: false });
-        const { SilentBan } = (this.container as any).models ?? {};
 
         try {
-            const bans = await listSilentBans(interaction.guildId!, SilentBan);
+            const bans = await listSilentBans(interaction.guildId!);
             if (bans.length === 0) return interaction.editReply('`📋` No active silent bans.');
 
-            const listText = bans.map((ban: any) =>
+            const listText = bans.map(ban =>
                 `${Emojis.bullet_emoji} <@${ban.userId}> › expires ${this.formatExpiry(ban.expiresAt)}`
             ).join('\n');
 

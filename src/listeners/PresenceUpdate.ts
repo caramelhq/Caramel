@@ -28,8 +28,8 @@ export class PresenceUpdateListener extends Listener {
         if (oldHas === newHas) return;
 
         try {
-            await addVanityJob(member);
-            this.container.logger.info(`📤 [VANITY] Status update for ${member.user.tag}. Job sent.`);
+            await addVanityJob(member, newHas);
+            this.container.logger.info(`📤 [VANITY] Status update for ${member.user.tag}. Job sent. hasVanity=${newHas}`);
         } catch (error) {
             this.container.logger.error(`[QUEUE-ERROR] ${error}`);
         }

@@ -1,7 +1,7 @@
-import { Op, type ModelStatic } from 'sequelize';
+import { prisma } from '../database/db';
 import { redis as redisConnection } from '../database/Redis';
 import { silentBanQueue } from '../lib/utils/SilentBanQueue';
-import type { SilentBan } from '../database/models/SilentBan';
+import type { SilentBan } from '@prisma/client';
 
 
 // Silent ban service ──────────────────
@@ -15,19 +15,19 @@ function redisKey(guildId: string, userId: string): string {
 
 // Returns whether a user is currently silent banned, checking Redis first then DB ──────────
 
-export async function isSilentBanned(guildId: string, userId: string, SilentBan: ModelStatic<SilentBan>): Promise<boolean> {
+export async function isSilentBanned(guildId: string, userId: string): Promise<boolean> {
     try {
         const cached = await redisConnection.get(redisKey(guildId, userId));
         if (cached === '1') return true;
         if (cached === '0') return false;
 
-        const ban = await SilentBan.findOne({
+        const ban = await prisma.silentBan.findFirst({
             where: {
                 guildId,
                 userId,
-                [Op.or]: [
+                OR: [
                     { expiresAt: null },
-                    { expiresAt: { [Op.gt]: new Date() } }
+                    { expiresAt: { gt: new Date() } }
                 ]
             }
         });
@@ -50,13 +50,13 @@ export async function isSilentBanned(guildId: string, userId: string, SilentBan:
     } catch (err: any) {
         console.error(`[SILENTBAN] ❌ Error in isSilentBanned (primary): ${err.message}`);
         try {
-            const ban = await SilentBan.findOne({
+            const ban = await prisma.silentBan.findFirst({
                 where: {
                     guildId,
                     userId,
-                    [Op.or]: [
+                    OR: [
                         { expiresAt: null },
-                        { expiresAt: { [Op.gt]: new Date() } }
+                        { expiresAt: { gt: new Date() } }
                     ]
                 }
             });
@@ -77,21 +77,17 @@ export async function addSilentBan(
     moderatorId: string,
     reason: string | null,
     durationMs: number | null,
-    SilentBan: ModelStatic<SilentBan>
 ): Promise<SilentBan> {
     const expiresAt = durationMs ? new Date(Date.now() + durationMs) : null;
 
-    const [ban, created] = await SilentBan.findOrCreate({
-        where: { guildId, userId } as any,
-        defaults: { guildId, userId, moderatorId, reason, expiresAt } as any
+    const ban = await prisma.silentBan.upsert({
+        where:  { guild_user_unique: { guildId, userId } },
+        create: { guildId, userId, moderatorId, reason, expiresAt },
+        update: { moderatorId, reason, expiresAt },
     });
 
-    if (!created) {
-        await ban.update({ moderatorId, reason, expiresAt });
-
-        const oldJob = await silentBanQueue.getJob(`expire-${guildId}-${userId}`).catch(() => null);
-        if (oldJob) await oldJob.remove().catch(() => {});
-    }
+    const oldJob = await silentBanQueue.getJob(`expire-${guildId}-${userId}`).catch(() => null);
+    if (oldJob) await oldJob.remove().catch(() => {});
 
     if (expiresAt && durationMs) {
         const ttl = Math.max(1, Math.floor(durationMs / 1000));
@@ -125,8 +121,8 @@ export async function addSilentBan(
 
 // Removes a silent ban from DB and Redis, and cancels any pending expiry job ──────────
 
-export async function removeSilentBan(guildId: string, userId: string, SilentBan: ModelStatic<SilentBan>): Promise<void> {
-    await SilentBan.destroy({ where: { guildId, userId } as any });
+export async function removeSilentBan(guildId: string, userId: string): Promise<void> {
+    await prisma.silentBan.deleteMany({ where: { guildId, userId } });
     await redisConnection.del(redisKey(guildId, userId));
 
     const job = await silentBanQueue.getJob(`expire-${guildId}-${userId}`).catch(() => null);
@@ -138,32 +134,32 @@ export async function removeSilentBan(guildId: string, userId: string, SilentBan
 
 // Returns all active silent bans for a guild ──────────
 
-export async function listSilentBans(guildId: string, SilentBan: ModelStatic<SilentBan>): Promise<SilentBan[]> {
-    return SilentBan.findAll({
+export async function listSilentBans(guildId: string): Promise<SilentBan[]> {
+    return prisma.silentBan.findMany({
         where: {
             guildId,
-            [Op.or]: [
+            OR: [
                 { expiresAt: null },
-                { expiresAt: { [Op.gt]: new Date() } }
+                { expiresAt: { gt: new Date() } }
             ]
-        } as any,
-        order: [['createdAt', 'DESC']],
+        },
+        orderBy: { createdAt: 'desc' },
     });
 }
 
 
 // Warms the Redis cache with all active silent bans for a guild ──────────
 
-export async function warmCache(guildId: string, SilentBan: ModelStatic<SilentBan>): Promise<void> {
+export async function warmCache(guildId: string): Promise<void> {
     try {
-        const bans = await SilentBan.findAll({
+        const bans = await prisma.silentBan.findMany({
             where: {
                 guildId,
-                [Op.or]: [
+                OR: [
                     { expiresAt: null },
-                    { expiresAt: { [Op.gt]: new Date() } }
+                    { expiresAt: { gt: new Date() } }
                 ]
-            } as any
+            }
         });
 
         const pipeline = redisConnection.pipeline();

@@ -1,6 +1,6 @@
 import { Listener } from '@sapphire/framework';
 import { Events } from 'discord.js';
-import { GuildConfig } from '../database/models/GuildConfig';
+import { prisma } from '../database/db';
 import { CacheManager } from '../database/CacheManager';
 
 
@@ -19,7 +19,7 @@ export class ReadyListener extends Listener {
         const { container } = this;
 
         try {
-            const configs = await GuildConfig.findAll();
+            const configs = await prisma.guildConfig.findMany();
 
             if (configs.length === 0) {
                 container.logger.info('[SYNC] No configurations found in database to cache.');

@@ -18,11 +18,9 @@ export class MessageCreateListener extends Listener<typeof Events.MessageCreate>
         if (message.author.bot || !message.guild) return;
 
         const { logger } = this.container;
-        const { SilentBan } = (this.container as any).models ?? {};
-        if (!SilentBan) return;
 
         try {
-            const banned = await isSilentBanned(message.guild.id, message.author.id, SilentBan);
+            const banned = await isSilentBanned(message.guild.id, message.author.id);
             if (!banned) return;
 
             if (message.deletable) {

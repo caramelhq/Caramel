@@ -4,8 +4,7 @@ import { PermissionFlagsBits, ChannelType, TextChannel, type GuildMember, type M
 import { addSilentBan, removeSilentBan, listSilentBans } from '../../services/SilentBanService';
 import { sendModDM, sendModLog, applyMute, checkThresholds, parseDuration } from '../../lib/utils/ModUtils';
 import { CacheManager } from '../../database/CacheManager';
-import { ModLog } from '../../database/models/ModLog';
-import { ActiveMute } from '../../database/models/ActiveMute';
+import { prisma } from '../../database/db';
 import { getLockdownLayout, getSilentBanLayout } from '../../lib/utils/layouts';
 import { Emojis } from '../../lib/constants/emojis';
 
@@ -185,7 +184,7 @@ export class ModCommand extends Subcommand {
             await sendModDM({ userId: target.id, action: 'warn', guildName: interaction.guild!.name, reason });
             await sendModLog({ guildId: interaction.guildId!, action: 'warn', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, reason });
 
-            const warnCount = await ModLog.count({ where: { guildId: interaction.guildId!, userId: target.id, action: 'warn' } });
+            const warnCount = await prisma.modLog.count({ where: { guildId: interaction.guildId!, userId: target.id, action: 'warn' } });
             await checkThresholds({ guildId: interaction.guildId!, userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, guild: interaction.guild! });
 
             return interaction.editReply({ content: `${Emojis.enabled_setting_emoji} **${target.user.tag}** has been warned. Total warnings: \`${warnCount}\`` });
@@ -212,7 +211,7 @@ export class ModCommand extends Subcommand {
             await sendModDM({ userId: target.id, action: 'warn', guildName: message.guild!.name, reason });
             await sendModLog({ guildId: message.guildId!, action: 'warn', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, reason });
 
-            const warnCount = await ModLog.count({ where: { guildId: message.guildId!, userId: target.id, action: 'warn' } });
+            const warnCount = await prisma.modLog.count({ where: { guildId: message.guildId!, userId: target.id, action: 'warn' } });
             await checkThresholds({ guildId: message.guildId!, userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, guild: message.guild! });
 
             return message.reply(`${Emojis.enabled_setting_emoji} **${target.user.tag}** has been warned. Total warnings: \`${warnCount}\``);
@@ -247,12 +246,10 @@ export class ModCommand extends Subcommand {
 
         try {
             await target.roles.add(mutedRoleId, reason ?? undefined);
-            await ActiveMute.upsert({
-                guildId:     interaction.guildId!,
-                userId:      target.id,
-                moderatorId: interaction.user.id,
-                reason:      reason ?? null,
-                expiresAt:   parsed?.expiresAt ?? null
+            await prisma.activeMute.upsert({
+                where:  { mute_guild_user_unique: { guildId: interaction.guildId!, userId: target.id } },
+                create: { guildId: interaction.guildId!, userId: target.id, moderatorId: interaction.user.id, reason, expiresAt: parsed?.expiresAt ?? null },
+                update: { moderatorId: interaction.user.id, reason, expiresAt: parsed?.expiresAt ?? null },
             });
             await sendModDM({ userId: target.id, action: 'timeout', guildName: interaction.guild!.name, reason, duration: parsed?.formatted ?? 'Permanent' });
             await sendModLog({ guildId: interaction.guildId!, action: 'timeout', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, reason, duration: parsed?.formatted ?? 'Permanent', expiresAt: parsed?.expiresAt ?? null });
@@ -287,12 +284,10 @@ export class ModCommand extends Subcommand {
 
         try {
             await target.roles.add(mutedRoleId, reason ?? undefined);
-            await ActiveMute.upsert({
-                guildId:     message.guildId!,
-                userId:      target.id,
-                moderatorId: message.author.id,
-                reason:      reason ?? null,
-                expiresAt:   parsed?.expiresAt ?? null
+            await prisma.activeMute.upsert({
+                where:  { mute_guild_user_unique: { guildId: message.guildId!, userId: target.id } },
+                create: { guildId: message.guildId!, userId: target.id, moderatorId: message.author.id, reason, expiresAt: parsed?.expiresAt ?? null },
+                update: { moderatorId: message.author.id, reason, expiresAt: parsed?.expiresAt ?? null },
             });
             await sendModDM({ userId: target.id, action: 'timeout', guildName: message.guild!.name, reason, duration: parsed?.formatted ?? 'Permanent' });
             await sendModLog({ guildId: message.guildId!, action: 'timeout', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, reason, duration: parsed?.formatted ?? 'Permanent', expiresAt: parsed?.expiresAt ?? null });
@@ -541,7 +536,7 @@ export class ModCommand extends Subcommand {
 
         try {
             await target.timeout(null);
-            await ActiveMute.destroy({ where: { guildId: interaction.guildId!, userId: target.id } });
+            await prisma.activeMute.deleteMany({ where: { guildId: interaction.guildId!, userId: target.id } });
             await sendModLog({ guildId: interaction.guildId!, action: 'unmute', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, reason: null });
 
             return interaction.editReply({ content: `${Emojis.enabled_setting_emoji} **${target.user.tag}** has been unmuted.` });
@@ -565,7 +560,7 @@ export class ModCommand extends Subcommand {
 
         try {
             await target.timeout(null);
-            await ActiveMute.destroy({ where: { guildId: message.guildId!, userId: target.id } });
+            await prisma.activeMute.deleteMany({ where: { guildId: message.guildId!, userId: target.id } });
             await sendModLog({ guildId: message.guildId!, action: 'unmute', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, reason: null });
 
             return message.reply(`${Emojis.enabled_setting_emoji} **${target.user.tag}** has been unmuted.`);
@@ -580,8 +575,6 @@ export class ModCommand extends Subcommand {
 
     public async chatInputSilentban(interaction: Subcommand.ChatInputCommandInteraction) {
         await interaction.deferReply({ ephemeral: false });
-        const { SilentBan } = (this.container as any).models ?? {};
-        if (!SilentBan) return interaction.editReply('`❌` Silent ban system is unavailable.');
 
         const action   = interaction.options.getString('action', true) as 'add' | 'remove' | 'list';
         const target   = interaction.options.getUser('user');
@@ -596,7 +589,7 @@ export class ModCommand extends Subcommand {
             const durationMs = duration ? DURATION_MAP[duration] : null;
 
             try {
-                await addSilentBan(interaction.guildId!, target!.id, interaction.user.id, reason, durationMs, SilentBan);
+                await addSilentBan(interaction.guildId!, target!.id, interaction.user.id, reason, durationMs);
                 return interaction.editReply(getSilentBanLayout('add', { userTag: target!.username, duration: duration ?? 'Permanent', reason }));
             } catch (error) {
                 this.container.logger.error(error);
@@ -606,7 +599,7 @@ export class ModCommand extends Subcommand {
 
         if (action === 'remove') {
             try {
-                await removeSilentBan(interaction.guildId!, target!.id, SilentBan);
+                await removeSilentBan(interaction.guildId!, target!.id);
                 return interaction.editReply(getSilentBanLayout('remove', { userTag: target!.username }));
             } catch (error) {
                 this.container.logger.error(error);
@@ -616,9 +609,9 @@ export class ModCommand extends Subcommand {
 
         if (action === 'list') {
             try {
-                const bans = await listSilentBans(interaction.guildId!, SilentBan);
+                const bans = await listSilentBans(interaction.guildId!);
                 if (bans.length === 0) return interaction.editReply('`📋` No active silent bans.');
-                const listText = bans.map((ban: any) => `${Emojis.bullet_emoji} <@${ban.userId}> › expires ${this.formatExpiry(ban.expiresAt)}`).join('\n');
+                const listText = bans.map(ban => `${Emojis.bullet_emoji} <@${ban.userId}> › expires ${this.formatExpiry(ban.expiresAt)}`).join('\n');
                 return interaction.editReply(getSilentBanLayout('list', { count: bans.length, listText }));
             } catch (error) {
                 this.container.logger.error(error);
@@ -627,12 +620,7 @@ export class ModCommand extends Subcommand {
         }
     }
 
-    // Message silentban also supports duration via DURATION_MAP using the first arg after the user ──────────
-
     public async messageSilentban(message: Message, args: any) {
-        const { SilentBan } = (this.container as any).models ?? {};
-        if (!SilentBan) return message.reply('`❌` Silent ban system is unavailable.');
-
         const action = await args.pick('string').catch(() => null) as 'add' | 'remove' | 'list' | null;
         if (!action || !['add', 'remove', 'list'].includes(action)) {
             return message.reply('`❌` Usage: `p!mod silentban <add|remove|list> [@user] [duration] [reason]`');
@@ -640,9 +628,9 @@ export class ModCommand extends Subcommand {
 
         if (action === 'list') {
             try {
-                const bans = await listSilentBans(message.guildId!, SilentBan);
+                const bans = await listSilentBans(message.guildId!);
                 if (bans.length === 0) return message.reply('`📋` No active silent bans.');
-                const listText = bans.map((ban: any) => `${Emojis.bullet_emoji} <@${ban.userId}> › expires ${this.formatExpiry(ban.expiresAt)}`).join('\n');
+                const listText = bans.map(ban => `${Emojis.bullet_emoji} <@${ban.userId}> › expires ${this.formatExpiry(ban.expiresAt)}`).join('\n');
                 return message.reply(getSilentBanLayout('list', { count: bans.length, listText }) as any);
             } catch (error) {
                 return message.reply('`❌` Error listing silent bans.');
@@ -653,7 +641,6 @@ export class ModCommand extends Subcommand {
         if (!target) return message.reply('`❌` You must specify a user.');
 
         if (action === 'add') {
-            // Try to read an optional duration arg, fall back to null if not a valid key ──────────
             const maybeDuration = await args.pick('string').catch(() => null);
             const durationKey   = maybeDuration && DURATION_MAP[maybeDuration] ? maybeDuration : null;
             const durationMs    = durationKey ? DURATION_MAP[durationKey] : null;
@@ -662,7 +649,7 @@ export class ModCommand extends Subcommand {
                 : maybeDuration;
 
             try {
-                await addSilentBan(message.guildId!, target.id, message.author.id, reason, durationMs, SilentBan);
+                await addSilentBan(message.guildId!, target.id, message.author.id, reason, durationMs);
                 return message.reply(getSilentBanLayout('add', { userTag: target.username, duration: durationKey ?? 'Permanent', reason }) as any);
             } catch (error) {
                 return message.reply('`❌` Error applying the silent ban.');
@@ -671,7 +658,7 @@ export class ModCommand extends Subcommand {
 
         if (action === 'remove') {
             try {
-                await removeSilentBan(message.guildId!, target.id, SilentBan);
+                await removeSilentBan(message.guildId!, target.id);
                 return message.reply(getSilentBanLayout('remove', { userTag: target.username }) as any);
             } catch (error) {
                 return message.reply('`❌` Error removing the silent ban.');
@@ -767,18 +754,18 @@ export class ModCommand extends Subcommand {
     // History ──────────
 
     public async chatInputHistory(interaction: Subcommand.ChatInputCommandInteraction) {
-        const userOption  = interaction.options.getUser('user');
+        const userOption   = interaction.options.getUser('user');
         const userIdOption = interaction.options.getString('user_id');
-        const targetId    = userOption?.id ?? userIdOption ?? null;
+        const targetId     = userOption?.id ?? userIdOption ?? null;
         await interaction.deferReply({ ephemeral: false });
 
         if (!targetId) return interaction.editReply({ content: '`❌` Please specify a user or user ID.' });
 
         try {
-            const logs = await ModLog.findAll({
-                where: { guildId: interaction.guildId!, userId: targetId },
-                order: [['created_at', 'DESC']],
-                limit: 10
+            const logs = await prisma.modLog.findMany({
+                where:   { guildId: interaction.guildId!, userId: targetId },
+                orderBy: { createdAt: 'desc' },
+                take:    10,
             });
 
             if (logs.length === 0) return interaction.editReply({ content: '`📋` No sanctions found for this user.' });
@@ -790,9 +777,7 @@ export class ModCommand extends Subcommand {
                 return `${Emojis.bullet_emoji} \`${log.action.toUpperCase()}\` ${time}${duration}${reason}`;
             }).join('\n');
 
-            return interaction.editReply({
-                content: `${Emojis.static_setting_emoji} **Sanction history for <@${targetId}>**\n\n${lines}`
-            });
+            return interaction.editReply({ content: `${Emojis.static_setting_emoji} **Sanction history for <@${targetId}>**\n\n${lines}` });
         } catch (error) {
             this.container.logger.error(`[MOD HISTORY]`, error);
             return interaction.editReply({ content: '`🔴` An error occurred.' });
@@ -806,10 +791,10 @@ export class ModCommand extends Subcommand {
         if (!targetId) return message.reply('`❌` Usage: `p!mod history @user` or `p!mod history <user_id>`');
 
         try {
-            const logs = await ModLog.findAll({
-                where: { guildId: message.guildId!, userId: targetId },
-                order: [['created_at', 'DESC']],
-                limit: 10
+            const logs = await prisma.modLog.findMany({
+                where:   { guildId: message.guildId!, userId: targetId },
+                orderBy: { createdAt: 'desc' },
+                take:    10,
             });
 
             if (logs.length === 0) return message.reply('`📋` No sanctions found for this user.');

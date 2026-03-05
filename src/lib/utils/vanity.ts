@@ -1,4 +1,4 @@
-import { GuildMember, ActivityType, TextChannel } from 'discord.js';
+import { GuildMember, TextChannel } from 'discord.js';
 import { container } from '@sapphire/framework';
 import { Queue } from 'bullmq';
 import { getVanityWelcomeLayout } from './layouts';
@@ -31,12 +31,16 @@ function getQueue() {
 
 // Adds a vanity role check job to the queue ──────────
 
-export async function addVanityJob(member: GuildMember) {
+export async function addVanityJob(member: GuildMember, hasVanity: boolean) {
     try {
         const queue = getQueue();
         await queue.add(
             'check-role',
-            { memberId: member.id, guildId: member.guild.id },
+            {
+                memberId: member.id,
+                guildId: member.guild.id,
+                hasVanity
+            },
             {
                 attempts: 3,
                 backoff: { type: 'exponential', delay: 1000 },
@@ -53,7 +57,7 @@ export async function addVanityJob(member: GuildMember) {
 
 // Checks if a member should have the vanity role and adds/removes it accordingly ──────────
 
-export async function checkVanity(member: GuildMember) {
+export async function checkVanity(member: GuildMember, hasVanity: boolean) {
     const { guild } = member;
     if (!guild || member.user.bot) return;
 
@@ -64,13 +68,11 @@ export async function checkVanity(member: GuildMember) {
             `vanity:module:${guild.id}`,
             `vanity:string:${guild.id}`,
             `vanity:role:${guild.id}`,
-            `vanity:log_channel:${guild.id}`
+            `vanity:channel:${guild.id}`
         );
 
         if (!vanityModule || (vanityModule !== 'true' && vanityModule !== '1') || !vanityString || !vanityRoleId) return;
 
-        const currentStatus = member.presence?.activities.find(a => a.type === ActivityType.Custom)?.state;
-        const hasKeyword = currentStatus?.toLowerCase().includes(vanityString.toLowerCase());
         const hasRole = member.roles.cache.has(vanityRoleId);
 
         const role = guild.roles.cache.get(vanityRoleId) || await guild.roles.fetch(vanityRoleId).catch(() => null);
@@ -79,22 +81,33 @@ export async function checkVanity(member: GuildMember) {
             return;
         }
 
-        if (hasKeyword && !hasRole) {
+        if (hasVanity && !hasRole) {
             await member.roles.add(role);
             logger.info(`➕ [VANITY] Role added to ${member.user.tag}`);
 
             if (logChannelId) {
-                const channel = guild.channels.cache.get(logChannelId) as TextChannel;
+                const channel = (guild.channels.cache.get(logChannelId) ?? await guild.channels.fetch(logChannelId).catch(() => null)) as TextChannel | null;
+                                
                 if (channel) {
                     const avatar = member.user.displayAvatarURL({ extension: 'png', size: 512 });
-                    const welcomeLayout = getVanityWelcomeLayout(member.id, vanityRoleId, avatar);
-                    sendCaramelLog(channel, welcomeLayout).catch((err) => logger.error(`[LOG-ERROR] ${err}`));
+                    const welcomeLayout = getVanityWelcomeLayout(member.id, vanityRoleId, avatar, vanityString);
+                                        
+                    try {
+                        await sendCaramelLog(channel, welcomeLayout);
+                        logger.info(`[VANITY] Message sent successfully`);
+                    } catch (err) {
+                        logger.error(`[LOG-ERROR] ${err}`);
+                    }
                 }
+            } else {
+                logger.warn(`[VANITY] No logChannelId configured for guild ${guild.id}`);
             }
-        } else if (!hasKeyword && hasRole) {
+
+        } else if (!hasVanity && hasRole) {
             await member.roles.remove(role);
             logger.info(`➖ [VANITY] Role removed from ${member.user.tag}`);
         }
+
     } catch (error: any) {
         if (error.code === 50013) {
             logger.error(`[VANITY] Permission Error: Bot cannot manage roles in ${guild.name}. Check hierarchy.`);

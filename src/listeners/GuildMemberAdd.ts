@@ -2,7 +2,7 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Listener } from '@sapphire/framework';
 import { Events, GuildMember } from 'discord.js';
 import { addVanityJob } from '../lib/utils/vanity';
-import { ActiveMute } from '../database/models/ActiveMute';
+import { prisma } from '../database/db';
 
 
 // Guild member add listener ──────────────────
@@ -17,7 +17,10 @@ export class GuildMemberAddListener extends Listener {
         // Queue vanity check with a small delay to allow presence to load ──────────
         setTimeout(async () => {
             try {
-                await addVanityJob(member);
+                const vanityString = await this.container.redis.get(`vanity:string:${member.guild.id}`);
+                const status       = member.presence?.activities.find(a => a.state)?.state ?? '';
+                const hasVanity    = !!vanityString && status.includes(vanityString);
+                await addVanityJob(member, hasVanity);
             } catch (error) {
                 this.container.logger.error(`[QUEUE-JOIN] Error adding ${member.id} to queue:`, error);
             }
@@ -25,14 +28,14 @@ export class GuildMemberAddListener extends Listener {
 
         // Reapply mute if they had one active on leave ──────────
         try {
-            const activeMute = await ActiveMute.findOne({
-                where: { guildId: member.guild.id, userId: member.id }
+            const activeMute = await prisma.activeMute.findUnique({
+                where: { mute_guild_user_unique: { guildId: member.guild.id, userId: member.id } }
             });
 
             if (!activeMute) return;
 
             if (activeMute.expiresAt && activeMute.expiresAt < new Date()) {
-                await activeMute.destroy();
+                await prisma.activeMute.delete({ where: { id: activeMute.id } });
                 return;
             }
 

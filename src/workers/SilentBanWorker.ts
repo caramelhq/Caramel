@@ -2,13 +2,11 @@ import { Worker, type Job } from 'bullmq';
 import { container } from '@sapphire/framework';
 import { Redis } from 'ioredis';
 import { removeSilentBan } from '../services/SilentBanService';
-import type { ModelStatic } from 'sequelize';
-import type { SilentBan } from '../database/models/SilentBan';
 
 
 // Silent ban worker ──────────────────
 
-export function setupSilentBanWorker(SilentBan: ModelStatic<SilentBan>) {
+export function setupSilentBanWorker() {
     const { logger, client } = container;
 
     logger.info('[WORKER] Initialized successfully - Silent Ban System');
@@ -68,7 +66,7 @@ export function setupSilentBanWorker(SilentBan: ModelStatic<SilentBan>) {
 
                     case 'expire_ban': {
                         const { guildId, userId } = job.data;
-                        await removeSilentBan(guildId, userId, SilentBan);
+                        await removeSilentBan(guildId, userId);
                         logger.info(`[SILENTBAN] Ban expired for ${userId} in ${guildId}`);
                         break;
                     }

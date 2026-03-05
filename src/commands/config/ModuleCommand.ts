@@ -1,10 +1,11 @@
 import { Subcommand } from '@sapphire/plugin-subcommands';
 import { PermissionFlagsBits, ComponentType, ChannelType, PermissionsBitField, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, Guild, ModalSubmitInteraction } from 'discord.js';
-import { GuildConfig } from '../../database/models/GuildConfig';
+import { prisma } from '../../database/db';
 import { ModuleValidators } from '../../validators/ModuleValidator';
 import { CacheManager } from '../../database/CacheManager';
 import { getModuleLayout, getResetLayout, getSuccessLayout, getCancelledLayout, getStatusUpdateLayout, getTimeoutLayout, getModuleSetupConfirmLayout, getModuleSetupSummaryLayout, getAlreadyEnabledLayout } from '../../lib/utils/layouts';
 import { Emojis } from '../../lib/constants/emojis';
+import type { GuildConfig } from '@prisma/client';
 
 
 // Constants ──────────────────
@@ -25,7 +26,7 @@ function getDisplayName(moduleValue: string) {
 
 const RESET_MAP: Record<string, (guildId: string, client: any) => Promise<void>> = {
     vanity: async (guildId, client) => {
-        const config = await GuildConfig.findByPk(guildId);
+        const config = await prisma.guildConfig.findUnique({ where: { guildId } });
         if (!config) return;
 
         if (config.vanityChannelId && config.vanityChannelCreatedByBot) {
@@ -44,14 +45,17 @@ const RESET_MAP: Record<string, (guildId: string, client: any) => Promise<void>>
             await role?.delete('Caramel - Vanity module reset').catch(() => {});
         }
 
-        await config.update({
-            vanityString: null, vanityRoleId: null, vanityChannelId: null,
-            vanityModule: false, vanityRoleCreatedByBot: false, vanityChannelCreatedByBot: false
+        const updated = await prisma.guildConfig.update({
+            where: { guildId },
+            data: {
+                vanityString: null, vanityRoleId: null, vanityChannelId: null,
+                vanityModule: false, vanityRoleCreatedByBot: false, vanityChannelCreatedByBot: false
+            }
         });
-        await CacheManager.syncGuild(guildId, config);
+        await CacheManager.syncGuild(guildId, updated);
     },
     mod: async (guildId, client) => {
-        const config = await GuildConfig.findByPk(guildId);
+        const config = await prisma.guildConfig.findUnique({ where: { guildId } });
         if (!config) return;
 
         if (config.modLogChannelId && config.modChannelCreatedByBot) {
@@ -65,12 +69,15 @@ const RESET_MAP: Record<string, (guildId: string, client: any) => Promise<void>>
             await role?.delete('Caramel - Mod module reset').catch(() => {});
         }
 
-        await config.update({
-            modLogChannelId: null, modModule: false, modThresholdsEnabled: false,
-            muteThreshold: 3, banThreshold: 5, mutedRoleId: null,
-            modChannelCreatedByBot: false, modRoleCreatedByBot: false
+        const updated = await prisma.guildConfig.update({
+            where: { guildId },
+            data: {
+                modLogChannelId: null, modModule: false, modThresholdsEnabled: false,
+                muteThreshold: 3, banThreshold: 5, mutedRoleId: null,
+                modChannelCreatedByBot: false, modRoleCreatedByBot: false
+            }
         });
-        await CacheManager.syncGuild(guildId, config);
+        await CacheManager.syncGuild(guildId, updated);
     }
 };
 
@@ -136,8 +143,8 @@ async function createPrivateChannel(guild: Guild, name: string) {
 
 // Builds the list of server resources that will be deleted on reset ──────────
 
-async function getResetDeletions(moduleName: string, guildId: string, client: any): Promise<string[]> {
-    const config = await GuildConfig.findByPk(guildId);
+async function getResetDeletions(moduleName: string, guildId: string): Promise<string[]> {
+    const config = await prisma.guildConfig.findUnique({ where: { guildId } });
     if (!config) return [];
 
     const deletions: string[] = [];
@@ -188,7 +195,7 @@ async function runSetupFlow(
     modalSubmit: ModalSubmitInteraction,
     moduleName: string,
     previewActions: string[],
-    run: (config: GuildConfig, summaryActions: string[]) => Promise<void>
+    run: (data: Record<string, any>, summaryActions: string[]) => Promise<void>
 ) {
     const { guildId } = modalSubmit;
     const confirmId = `${moduleName}_confirm_${modalSubmit.id}`;
@@ -214,13 +221,17 @@ async function runSetupFlow(
 
         if (i.customId === confirmId) {
             try {
-                const [config] = await GuildConfig.findOrCreate({ where: { guildId: guildId! } });
+                const data: Record<string, any> = {};
                 const summaryActions: string[] = [];
 
-                await run(config, summaryActions);
+                await run(data, summaryActions);
 
-                await config.save();
-                await CacheManager.syncGuild(guildId!, config);
+                const updated = await prisma.guildConfig.upsert({
+                    where:  { guildId: guildId! },
+                    create: { guildId: guildId!, ...data },
+                    update: data,
+                });
+                await CacheManager.syncGuild(guildId!, updated);
 
                 return i.update({ ...getModuleSetupSummaryLayout(getDisplayName(moduleName), summaryActions) })
                     .then(() => collector.stop('success'));
@@ -340,25 +351,29 @@ export class ModuleCommand extends Subcommand {
             modalSubmit,
             'vanity',
             [`Set keyword: \`${keyword}\``, roleResult.action, channelResult.action],
-            async (config, summaryActions) => {
-                config.vanityString = keyword;
+            async (data, summaryActions) => {
+                data.vanityString = keyword;
                 summaryActions.push(`Keyword set to \`${keyword}\``);
 
                 if (roleResult.resolvedId) {
-                    config.vanityRoleId = roleResult.resolvedId; config.vanityRoleCreatedByBot = false;
+                    data.vanityRoleId = roleResult.resolvedId;
+                    data.vanityRoleCreatedByBot = false;
                     summaryActions.push(`Role linked: <@&${roleResult.resolvedId}>`);
                 } else {
                     const newRole = await guild!.roles.create({ name: roleRaw || `Vanity Role [${guild!.name}]` });
-                    config.vanityRoleId = newRole.id; config.vanityRoleCreatedByBot = true;
+                    data.vanityRoleId = newRole.id;
+                    data.vanityRoleCreatedByBot = true;
                     summaryActions.push(`Role created: <@&${newRole.id}>`);
                 }
 
                 if (channelResult.resolvedId) {
-                    config.vanityChannelId = channelResult.resolvedId; config.vanityChannelCreatedByBot = false;
+                    data.vanityChannelId = channelResult.resolvedId;
+                    data.vanityChannelCreatedByBot = false;
                     summaryActions.push(`Channel linked: <#${channelResult.resolvedId}>`);
                 } else {
                     const newChannel = await createPrivateChannel(guild!, channelRaw || 'vanity-logs');
-                    config.vanityChannelId = newChannel.id; config.vanityChannelCreatedByBot = true;
+                    data.vanityChannelId = newChannel.id;
+                    data.vanityChannelCreatedByBot = true;
                     summaryActions.push(`Channel created: <#${newChannel.id}>`);
                 }
             }
@@ -406,18 +421,21 @@ export class ModuleCommand extends Subcommand {
             modalSubmit,
             'mod',
             [channelResult.action, roleResult.action],
-            async (config, summaryActions) => {
+            async (data, summaryActions) => {
                 if (channelResult.resolvedId) {
-                    config.modLogChannelId = channelResult.resolvedId; config.modChannelCreatedByBot = false;
+                    data.modLogChannelId = channelResult.resolvedId;
+                    data.modChannelCreatedByBot = false;
                     summaryActions.push(`Channel linked: <#${channelResult.resolvedId}>`);
                 } else {
                     const newChannel = await createPrivateChannel(guild!, channelRaw || 'mod-logs');
-                    config.modLogChannelId = newChannel.id; config.modChannelCreatedByBot = true;
+                    data.modLogChannelId = newChannel.id;
+                    data.modChannelCreatedByBot = true;
                     summaryActions.push(`Channel created: <#${newChannel.id}>`);
                 }
 
                 if (roleResult.resolvedId) {
-                    config.mutedRoleId = roleResult.resolvedId; config.modRoleCreatedByBot = false;
+                    data.mutedRoleId = roleResult.resolvedId;
+                    data.modRoleCreatedByBot = false;
                     summaryActions.push(`Role linked: <@&${roleResult.resolvedId}>`);
                 } else {
                     const newRole = await guild!.roles.create({
@@ -425,7 +443,8 @@ export class ModuleCommand extends Subcommand {
                         color:  0x818386,
                         reason: 'Caramel - Muted role auto-created'
                     });
-                    config.mutedRoleId = newRole.id; config.modRoleCreatedByBot = true;
+                    data.mutedRoleId = newRole.id;
+                    data.modRoleCreatedByBot = true;
                     summaryActions.push(`Role created: <@&${newRole.id}>`);
                 }
             }
@@ -442,7 +461,7 @@ export class ModuleCommand extends Subcommand {
         await interaction.deferReply({ ephemeral: false });
 
         try {
-            const config = await GuildConfig.findByPk(guildId!);
+            const config = await prisma.guildConfig.findUnique({ where: { guildId: guildId! } });
             if (!config) return interaction.editReply({ content: '`❌` No configuration found.' });
 
             return interaction.editReply(getModuleLayout(moduleValue, config, guild!, false));
@@ -463,7 +482,7 @@ export class ModuleCommand extends Subcommand {
         await interaction.deferReply({ ephemeral: false });
 
         try {
-            const config    = await GuildConfig.findByPk(guildId!);
+            const config    = await prisma.guildConfig.findUnique({ where: { guildId: guildId! } });
             const validator = ModuleValidators[moduleValue];
 
             if (!validator) return interaction.editReply({ content: `\`❌\` Module **${displayName}** not supported.` });
@@ -477,8 +496,11 @@ export class ModuleCommand extends Subcommand {
                 });
             }
 
-            await config!.update({ [`${moduleValue}Module`]: true });
-            await CacheManager.syncGuild(guildId!, config!);
+            const updated = await prisma.guildConfig.update({
+                where: { guildId: guildId! },
+                data:  { [`${moduleValue}Module`]: true }
+            });
+            await CacheManager.syncGuild(guildId!, updated);
 
             return interaction.editReply(getStatusUpdateLayout(displayName, true));
         } catch (error) {
@@ -498,11 +520,11 @@ export class ModuleCommand extends Subcommand {
         await interaction.deferReply({ ephemeral: false });
 
         try {
-            const config = await GuildConfig.findByPk(guildId!);
-            if (!config) return interaction.editReply({ content: '`❌` No configuration found.' });
-
-            await config.update({ [`${moduleValue}Module`]: false });
-            await CacheManager.syncGuild(guildId!, config);
+            const updated = await prisma.guildConfig.update({
+                where: { guildId: guildId! },
+                data:  { [`${moduleValue}Module`]: false }
+            });
+            await CacheManager.syncGuild(guildId!, updated);
 
             return interaction.editReply(getStatusUpdateLayout(displayName, false));
         } catch (error) {
@@ -520,7 +542,7 @@ export class ModuleCommand extends Subcommand {
         const confirmId  = `confirm_${interaction.id}`;
         const cancelId   = `cancel_${interaction.id}`;
 
-        const deletions = await getResetDeletions(moduleName, guildId!, this.container.client);
+        const deletions = await getResetDeletions(moduleName, guildId!);
 
         await interaction.reply({ ...getResetLayout(confirmId, cancelId, deletions), ephemeral: false });
 

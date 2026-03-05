@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import './database/Redis';
-import { connectDB, sequelize } from './database/db';
+import { connectDB, prisma } from './database/db';
 import { CaramelClient } from './structures/CaramelClient';
 import { container } from '@sapphire/framework';
 import { setupVanityWorker } from './workers/VanityWorker';
@@ -16,18 +16,11 @@ async function bootstrap() {
     try {
         await connectDB();
 
-        const models = (sequelize as any).models;
+        // Attach workers to container ──────────
 
-        // Attach models and workers to container ──────────
-
-        (container as any).models = {
-            SilentBan:   models.SilentBan,
-            GuildConfig: models.GuildConfig
-        };
-
-        (container as any).vanityWorker   = setupVanityWorker();
-        (container as any).silentBanWorker = setupSilentBanWorker(models.SilentBan);
-        (container as any).muteWorker     = setupMuteWorker();
+        container.vanityWorker    = setupVanityWorker();
+        container.silentBanWorker = setupSilentBanWorker();
+        container.muteWorker      = setupMuteWorker();
 
         await client.start(process.env.DISCORD_TOKEN!);
     } catch (error) {
@@ -37,6 +30,23 @@ async function bootstrap() {
             console.error('[BOOTSTRAP] Fatal error before logger init:', error);
         }
         process.exit(1);
+    }
+}
+
+
+// Graceful shutdown ──────────
+
+process.on('SIGINT',  async () => { await prisma.$disconnect(); process.exit(0); });
+process.on('SIGTERM', async () => { await prisma.$disconnect(); process.exit(0); });
+
+
+// Container type augmentation ──────────
+
+declare module '@sapphire/pieces' {
+    interface Container {
+        vanityWorker:    ReturnType<typeof setupVanityWorker>;
+        silentBanWorker: ReturnType<typeof setupSilentBanWorker>;
+        muteWorker:      ReturnType<typeof setupMuteWorker>;
     }
 }
 

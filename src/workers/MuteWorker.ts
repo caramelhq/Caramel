@@ -1,6 +1,5 @@
 import { container } from '@sapphire/framework';
-import { Op } from 'sequelize';
-import { ActiveMute } from '../database/models/ActiveMute';
+import { prisma } from '../database/db';
 
 
 // Constants ──────────────────
@@ -19,8 +18,13 @@ export function setupMuteWorker() {
 
     const tick = async () => {
         try {
-            const expiredMutes = await ActiveMute.findAll({
-                where: { expiresAt: { [Op.lte]: new Date(), [Op.ne]: null } }
+            const expiredMutes = await prisma.activeMute.findMany({
+                where: {
+                    expiresAt: {
+                        lte: new Date(),
+                        not: null,
+                    }
+                }
             });
 
             if (expiredMutes.length === 0) return;
@@ -34,7 +38,7 @@ export function setupMuteWorker() {
 
                     if (!guild) {
                         logger.warn(`[MUTE-WORKER] Guild ${mute.guildId} not found, removing mute record`);
-                        await mute.destroy();
+                        await prisma.activeMute.delete({ where: { id: mute.id } });
                         continue;
                     }
 
@@ -49,7 +53,7 @@ export function setupMuteWorker() {
                         logger.info(`[MUTE-WORKER] Member ${mute.userId} not in guild, removing record`);
                     }
 
-                    await mute.destroy();
+                    await prisma.activeMute.delete({ where: { id: mute.id } });
                 } catch (err: any) {
                     logger.error(`[MUTE-WORKER] Error processing mute ${mute.userId} in ${mute.guildId}: ${err.message}`);
                 }
