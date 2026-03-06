@@ -3,7 +3,11 @@ import "./globals.css";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { SessionProvider } from "@/components/SessionProvider";
 
-const BASE_URL = "https://caramelhq.xyz";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "https://caramelhq.xyz");
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
