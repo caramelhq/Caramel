@@ -118,6 +118,58 @@ export async function resolveUsernames(userIds: string[]): Promise<Map<string, s
   return map;
 }
 
+// Channel type 0 = GuildText, permission overwrite type 0 = role
+const VIEW_CHANNEL = "1024";
+
+export async function createPrivateChannel(guildId: string, name: string): Promise<{ id: string; name: string } | null> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return null;
+
+  const guild = await fetchGuildFromBot(guildId);
+  if (!guild) return null;
+
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name,
+      type: 0,
+      permission_overwrites: [
+        { id: guild.id, type: 0, deny: VIEW_CHANNEL },
+      ],
+    }),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function createRole(
+  guildId: string,
+  name: string,
+  color?: number,
+  reason?: string,
+): Promise<{ id: string; name: string } | null> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return null;
+
+  const headers: Record<string, string> = {
+    Authorization: `Bot ${token}`,
+    "Content-Type": "application/json",
+  };
+  if (reason) headers["X-Audit-Log-Reason"] = reason;
+
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ name, color: color ?? 0 }),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export function guildIconUrl(guildId: string, iconHash: string | null, size = 128): string | null {
   if (!iconHash) return null;
   const ext = iconHash.startsWith("a_") ? "gif" : "webp";

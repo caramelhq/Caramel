@@ -13,6 +13,8 @@ import {
   ExternalLink,
   Loader2,
   Check,
+  Wand2,
+  Sparkles,
 } from "lucide-react";
 import { useApi, apiPatch } from "@/lib/api";
 
@@ -67,8 +69,16 @@ export default function SettingsPage() {
   const [vanityRoleId, setVanityRoleId] = useState("");
   const [vanityChannelId, setVanityChannelId] = useState("");
 
+  const [autoCreateModChannel, setAutoCreateModChannel] = useState(false);
+  const [autoCreateMutedRole, setAutoCreateMutedRole] = useState(false);
+  const [autoCreateVanityRole, setAutoCreateVanityRole] = useState(false);
+  const [autoCreateVanityChannel, setAutoCreateVanityChannel] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [settingUpMod, setSettingUpMod] = useState(false);
+  const [settingUpVanity, setSettingUpVanity] = useState(false);
+  const [setupResult, setSetupResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (data?.config) {
@@ -119,6 +129,65 @@ export default function SettingsPage() {
     }
   };
 
+  const handleModSetup = async () => {
+    setSettingUpMod(true);
+    setSetupResult(null);
+    try {
+      const res = await fetch(`/api/guilds/${guildId}/setup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          module: "mod",
+          modLogChannelId: autoCreateModChannel ? null : (modLogChannelId || null),
+          mutedRoleId: autoCreateMutedRole ? null : (mutedRoleId || null),
+          autoCreateChannel: autoCreateModChannel,
+          autoCreateRole: autoCreateMutedRole,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Setup failed");
+      setSetupResult("Moderation module configured and enabled");
+      setAutoCreateModChannel(false);
+      setAutoCreateMutedRole(false);
+      await refetch();
+    } catch (err) {
+      setSetupResult(err instanceof Error ? err.message : "Setup failed");
+    } finally {
+      setSettingUpMod(false);
+      setTimeout(() => setSetupResult(null), 3000);
+    }
+  };
+
+  const handleVanitySetup = async () => {
+    setSettingUpVanity(true);
+    setSetupResult(null);
+    try {
+      const res = await fetch(`/api/guilds/${guildId}/setup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          module: "vanity",
+          vanityString: vanityString || null,
+          vanityRoleId: autoCreateVanityRole ? null : (vanityRoleId || null),
+          vanityChannelId: autoCreateVanityChannel ? null : (vanityChannelId || null),
+          autoCreateRole: autoCreateVanityRole,
+          autoCreateChannel: autoCreateVanityChannel,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Setup failed");
+      setSetupResult("Vanity module configured and enabled");
+      setAutoCreateVanityRole(false);
+      setAutoCreateVanityChannel(false);
+      await refetch();
+    } catch (err) {
+      setSetupResult(err instanceof Error ? err.message : "Setup failed");
+    } finally {
+      setSettingUpVanity(false);
+      setTimeout(() => setSetupResult(null), 3000);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 py-12 justify-center text-sm text-muted-foreground">
@@ -162,7 +231,8 @@ export default function SettingsPage() {
               <select
                 value={modLogChannelId}
                 onChange={(e) => setModLogChannelId(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
+                disabled={autoCreateModChannel}
+                className="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none disabled:opacity-40"
               >
                 <option value="">Select a channel</option>
                 {channels.map((ch) => (
@@ -172,7 +242,18 @@ export default function SettingsPage() {
                 ))}
               </select>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">All moderation actions will be logged here.</p>
+            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoCreateModChannel}
+                onChange={(e) => setAutoCreateModChannel(e.target.checked)}
+                className="rounded border-border accent-primary"
+              />
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Auto-create #mod-logs channel
+              </span>
+            </label>
           </div>
 
           <div>
@@ -182,7 +263,8 @@ export default function SettingsPage() {
               <select
                 value={mutedRoleId}
                 onChange={(e) => setMutedRoleId(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
+                disabled={autoCreateMutedRole}
+                className="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none disabled:opacity-40"
               >
                 <option value="">Select a role</option>
                 {roles.map((r) => (
@@ -192,8 +274,28 @@ export default function SettingsPage() {
                 ))}
               </select>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Role assigned to muted members.</p>
+            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoCreateMutedRole}
+                onChange={(e) => setAutoCreateMutedRole(e.target.checked)}
+                className="rounded border-border accent-primary"
+              />
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Auto-create @Muted role
+              </span>
+            </label>
           </div>
+
+          <button
+            onClick={handleModSetup}
+            disabled={settingUpMod}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors disabled:opacity-50"
+          >
+            {settingUpMod ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+            {settingUpMod ? "Setting up..." : "Run Setup"}
+          </button>
 
           <div className="flex items-center justify-between">
             <div>
@@ -272,7 +374,8 @@ export default function SettingsPage() {
               <select
                 value={vanityRoleId}
                 onChange={(e) => setVanityRoleId(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
+                disabled={autoCreateVanityRole}
+                className="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none disabled:opacity-40"
               >
                 <option value="">Select a role</option>
                 {roles.map((r) => (
@@ -282,7 +385,18 @@ export default function SettingsPage() {
                 ))}
               </select>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Role assigned to users with the vanity keyword in their status.</p>
+            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoCreateVanityRole}
+                onChange={(e) => setAutoCreateVanityRole(e.target.checked)}
+                className="rounded border-border accent-primary"
+              />
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Auto-create vanity role
+              </span>
+            </label>
           </div>
 
           <div>
@@ -292,7 +406,8 @@ export default function SettingsPage() {
               <select
                 value={vanityChannelId}
                 onChange={(e) => setVanityChannelId(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
+                disabled={autoCreateVanityChannel}
+                className="w-full pl-8 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none disabled:opacity-40"
               >
                 <option value="">Select a channel</option>
                 {channels.map((ch) => (
@@ -302,7 +417,28 @@ export default function SettingsPage() {
                 ))}
               </select>
             </div>
+            <label className="flex items-center gap-2 mt-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoCreateVanityChannel}
+                onChange={(e) => setAutoCreateVanityChannel(e.target.checked)}
+                className="rounded border-border accent-primary"
+              />
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Auto-create #vanity-logs channel
+              </span>
+            </label>
           </div>
+
+          <button
+            onClick={handleVanitySetup}
+            disabled={settingUpVanity}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors disabled:opacity-50"
+          >
+            {settingUpVanity ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+            {settingUpVanity ? "Setting up..." : "Run Setup"}
+          </button>
         </div>
       </motion.div>
 
@@ -372,6 +508,15 @@ export default function SettingsPage() {
           Reset
         </button>
       </motion.div>
+
+      {setupResult && (
+        <motion.div
+          variants={item}
+          className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-foreground"
+        >
+          {setupResult}
+        </motion.div>
+      )}
 
       <motion.div variants={item} className="rounded-xl border border-border/50 bg-card/50 p-5">
         <div className="flex items-center justify-between">
