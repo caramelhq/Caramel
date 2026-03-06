@@ -9,6 +9,8 @@ dist/
 .env
 .env.local
 .env.development.local
+.env.production.local
+.env.test.local
 
 # Logs
 *.log
@@ -18,4 +20,13 @@ npm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+
+# Bot — generated
 /src/generated/prisma
+
+# Web — Next.js
+web/.next/
+web/out/
+web/.turbopack/
+web/.source/
+web/pnpm-lock.yaml

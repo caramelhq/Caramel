@@ -1,0 +1,35 @@
+---
+title: Introduction
+description: Welcome to the Caramel documentation. Learn how to set up and use the modular Discord bot built to scale.
+---
+
+## What is Caramel?
+
+**Caramel** is a modular Discord bot built with the [Sapphire Framework](https://sapphirejs.dev/) and TypeScript. Designed from the ground up with clean architecture, async job processing, and a two-layer caching system — built to scale.
+
+## Core Features
+
+- **Moderation** — Full suite: warn, mute, ban, softban, kick, timeout, slowmode, lockdown, and sanction history.
+- **Vanity Tracker** — Detects custom status keywords and automatically assigns or removes roles.
+- **Silent Ban** — Silently restricts users from sending messages or joining voice without notifying them.
+- **Module System** — Each feature is an independent module. Enable, disable, configure, or factory reset per guild.
+- **Auto-Mute Restore** — Reapplies active mutes on rejoin, with automatic expiry via background workers.
+
+## Quick Start
+
+1. [Add Caramel to your server](#)
+2. Run `/module setup name:Moderation` to configure moderation
+3. Run `/module enable name:Moderation` to activate it
+
+That's it. Check the [Getting Started](/docs/getting-started) guide for a full walkthrough.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js + TypeScript |
+| Framework | Sapphire Framework |
+| Database | PostgreSQL via Sequelize |
+| Cache | Redis (ioredis) |
+| Queue | BullMQ |
+| Logger | Winston |

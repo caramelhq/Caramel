@@ -1,0 +1,18 @@
+{
+  "title": "Documentation",
+  "defaultOpen": true,
+  "pages": [
+    "index",
+    "---Getting Started---",
+    "getting-started",
+    "installation",
+    "---Modules---",
+    "moderation",
+    "vanity-tracker",
+    "silent-ban",
+    "module-system",
+    "---Reference---",
+    "commands",
+    "architecture"
+  ]
+}
