@@ -1,0 +1,61 @@
+---
+title: Silent Ban
+description: Stealth-restrict users from sending messages or joining voice without notifying them.
+---
+
+## Overview
+
+Silent Ban is a unique moderation tool that restricts a user's ability to send messages and join voice channels — **without** sending them any notification. The user won't know they've been restricted.
+
+This is useful for handling bad actors who would create alt accounts or cause disruption if they knew they were banned.
+
+## Setup
+
+Silent Ban is part of the Moderation module. Ensure it's enabled:
+
+```
+/module setup name:Moderation
+/module enable name:Moderation
+```
+
+## Commands
+
+### Add a silent ban
+
+```
+/mod silentban add @user
+```
+
+The user will immediately be unable to:
+- Send messages in any channel
+- Join voice channels
+
+No notification or DM is sent to the user.
+
+### Remove a silent ban
+
+```
+/mod silentban remove @user
+```
+
+Restores the user's normal permissions.
+
+### List silent bans
+
+```
+/mod silentban list
+```
+
+View all currently silent-banned members in the server.
+
+## Rate-Limit Escalation
+
+Silent Ban includes **progressive rate-limit escalation**. If a silent-banned user repeatedly attempts to send messages, the cooldown between their attempts increases progressively, making it even harder for them to test whether they're restricted.
+
+## Background Worker
+
+The Silent Ban system runs as a dedicated background worker. This ensures:
+
+- Restrictions persist across bot restarts
+- Rate-limit states are maintained in Redis
+- Zero impact on command response times

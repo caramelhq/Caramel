@@ -1,0 +1,65 @@
+---
+title: Architecture
+description: Under the hood — how Caramel is built with clean architecture, async workers, and a two-layer cache.
+---
+
+## Overview
+
+Caramel is designed with a clean, modular architecture. Every component has a clear responsibility and can be understood in isolation.
+
+## Project Structure
+
+```
+src/
+├── commands/         # Slash + prefix commands, grouped by module
+│   ├── config/       # Module management (setup, enable, disable, reset)
+│   └── mod/          # Moderation commands
+├── database/
+│   ├── models/       # Sequelize models (GuildConfig, ModLog, SilentBan, ...)
+│   ├── CacheManager  # Redis sync layer
+│   ├── Redis         # ioredis setup + container attachment
+│   └── db            # Sequelize init + connection
+├── lib/
+│   ├── constants/    # Shared constants
+│   └── utils/        # Layouts, mod utils, vanity logic, queues, rate limiting
+├── listeners/        # Discord event handlers
+├── services/         # Business logic (SilentBanService)
+├── structures/       # CaramelClient (custom Sapphire client)
+├── validators/       # Module pre-enable validation
+├── workers/          # Background workers (Vanity, SilentBan, Mute)
+└── index             # Bootstrap
+```
+
+## Two-Layer Cache
+
+Caramel uses a **two-layer caching system** to keep things fast:
+
+1. **Redis** (hot layer) — all frequently accessed data is cached in Redis via ioredis. Reads always hit Redis first.
+2. **PostgreSQL** (cold layer) — the source of truth. Data is synced between Redis and PostgreSQL through the `CacheManager`.
+
+This architecture ensures sub-millisecond reads for guild configs, module states, and active moderation records.
+
+## Async Job Processing
+
+Heavy or recurring tasks are offloaded to **BullMQ workers**:
+
+- **Vanity Worker** — processes presence updates and role assignments asynchronously
+- **SilentBan Worker** — manages restriction states and rate-limit escalation
+- **Mute Worker** — handles auto-mute restore on rejoin and timed mute expiry
+
+Workers run independently from the main bot process, so command responsiveness is never affected.
+
+## Sapphire Framework
+
+Caramel is built on the [Sapphire Framework](https://sapphirejs.dev/), which provides:
+
+- Command handling (both slash and message-based)
+- Event listener system
+- Preconditions and argument parsing
+- Plugin architecture
+
+The custom `CaramelClient` in `src/structures/` extends Sapphire's client with Caramel-specific initialization (Redis, database, workers).
+
+## Module Validation
+
+The `src/validators/` directory contains pre-enable checks for each module. Before a module can be activated, Caramel verifies that all required configuration exists (e.g., a mute role must be set before enabling Moderation).
