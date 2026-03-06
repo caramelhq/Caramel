@@ -3,8 +3,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveUsernames } from "@/lib/discord";
 import { DEV_BYPASS, DEV_ACTIONS } from "@/lib/dev";
-import type { ModLog } from "@prisma/client";
-
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ guildId: string }> },
@@ -31,13 +29,10 @@ export async function GET(
       take: limit,
     });
 
-    const allUserIds = actions.flatMap((a: ModLog) => [
-      a.userId,
-      a.moderatorId,
-    ]);
+    const allUserIds = actions.flatMap((a) => [a.userId, a.moderatorId]);
     const usernameMap = await resolveUsernames(allUserIds);
 
-    const formatted = actions.map((a: ModLog) => ({
+    const formatted = actions.map((a) => ({
       id: a.id,
       action: a.action,
       userId: a.userId,
