@@ -1,104 +1,263 @@
 ---
 title: Moderation
-description: Full moderation suite — warn, mute, ban, kick, timeout, slowmode, lockdown, and sanction history.
+description: Full moderation suite — warn, mute, ban, softban, kick, timeout, unmute, slowmode, lockdown, and sanction history. Every action is logged and tracked.
 ---
 
 ## Overview
 
-The Moderation module provides a complete set of tools to manage your server. All commands support both `/mod` slash commands and the `c!mod` prefix.
+The Moderation module gives you a complete toolkit for managing your server. Every action is logged to your configured mod log channel, stored in the database, and visible in the [web dashboard](/docs/dashboard). Members receive a DM notification when a moderation action is taken against them.
+
+All commands require the **Moderate Members** permission or higher. Caramel enforces role hierarchy — you cannot moderate someone with an equal or higher role than your own.
 
 ## Setup
+
+### Via the Web Dashboard
+
+1. Go to **Dashboard > Modules**
+2. Toggle **Moderation** on
+3. Navigate to **Settings** and pick your log channel and muted role from the dropdowns
+4. Click **Save**
+
+### Via Discord
 
 ```
 /module setup name:Moderation
 /module enable name:Moderation
 ```
 
-During setup you can configure:
-- **Log channel** — where moderation actions are logged
-- **Mute role** — the role applied for mute commands
-- **Prefix** — message command prefix (default: `c!`)
+During setup you'll configure:
+
+- **Log channel** — where all moderation actions are posted (paste an ID, name, or leave empty to auto-create `#mod-logs`)
+- **Muted role** — the role applied when using `/mod mute` (paste an ID, name, or leave empty to auto-create)
+
+If you leave either field empty, Caramel creates the resource automatically. A confirmation step shows you exactly what will be created before anything happens.
+
+## Threshold System
+
+Caramel supports automatic escalation based on warn counts. When **thresholds** are enabled in your settings, accumulating warnings can automatically trigger a mute or ban.
+
+Configure thresholds in the dashboard under **Settings** or view the current values with:
+
+```
+/module settings name:Moderation
+```
+
+Default thresholds:
+
+- **Mute threshold** — 3 warnings triggers an automatic mute
+- **Ban threshold** — 5 warnings triggers an automatic ban
 
 ## Commands
 
 ### Warn
 
-Issue a warning to a member. Warnings are logged and can be reviewed via the history command.
+Issue a formal warning to a member. Warnings are logged to the mod log channel, stored in the database, and count toward the threshold system.
 
 ```
 /mod warn @user reason:Breaking rules
+c!mod warn @user Breaking rules
 ```
+
+| Option   | Required | Description            |
+| -------- | -------- | ---------------------- |
+| `user`   | Yes      | The member to warn     |
+| `reason` | No       | Reason for the warning |
+
+After a warn is issued, the total warning count for that user is displayed in the response. If the warning count hits the mute or ban threshold (when enabled), Caramel automatically escalates.
+
+---
 
 ### Mute
 
-Mute a member by assigning the configured mute role. Supports optional duration for temporary mutes.
+Mute a member by assigning the configured muted role. Supports an optional duration — if provided, the mute expires automatically in the background.
 
 ```
-/mod mute @user duration:1h reason:Spamming
+/mod mute @user duration:2h reason:Spamming
+c!mod mute @user 2h Spamming
 ```
 
-Caramel includes **auto-mute restore** — if a muted member leaves and rejoins, the mute is automatically reapplied. Mutes expire automatically via background workers.
+| Option     | Required | Description                                  |
+| ---------- | -------- | -------------------------------------------- |
+| `user`     | Yes      | The member to mute                           |
+| `duration` | No       | Duration (e.g. `30m`, `2h`, `1d`, `1d2h30m`) |
+| `reason`   | No       | Reason for the mute                          |
+
+**Duration format** — combine days (`d`), hours (`h`), and minutes (`m`): `1d`, `2h`, `30m`, `1d2h30m`. Omitting duration makes it permanent.
+
+**Auto-mute restore** — if a muted member leaves and rejoins the server, the mute is automatically reapplied. This prevents mute evasion via rejoining.
+
+**Timed expiry** — mutes with a duration expire automatically via a background worker, no manual unmute required.
+
+---
 
 ### Timeout
 
-Apply Discord's native timeout to a member.
+Apply Discord's native timeout to a member. Timeouts prevent the user from sending messages, joining voice, or interacting with the server using Discord's built-in system.
 
 ```
 /mod timeout @user duration:30m reason:Disruptive behavior
+c!mod timeout @user 30m Disruptive behavior
 ```
+
+| Option     | Required | Description                       |
+| ---------- | -------- | --------------------------------- |
+| `user`     | Yes      | The member to timeout             |
+| `duration` | No       | Duration (e.g. `30m`, `2h`, `1d`) |
+| `reason`   | No       | Reason for the timeout            |
+
+Discord's maximum timeout duration is 28 days.
+
+---
 
 ### Unmute
 
-Remove a mute role or timeout from a member.
+Remove a timeout from a member and clear them from the active mute tracking table.
 
 ```
 /mod unmute @user
+c!mod unmute @user
 ```
+
+| Option | Required | Description          |
+| ------ | -------- | -------------------- |
+| `user` | Yes      | The member to unmute |
+
+Only works on members who are currently timed out via Discord's timeout system. The action is logged to the mod log channel.
+
+---
 
 ### Ban
 
-Permanently ban a member from the server.
+Permanently ban a member from the server. The member receives a DM notification before the ban is applied. You can optionally delete their recent messages.
 
 ```
 /mod ban @user reason:Repeated violations
+/mod ban @user reason:Repeated violations delete_days:7
+c!mod ban @user Repeated violations
 ```
+
+| Option        | Required | Description                                        |
+| ------------- | -------- | -------------------------------------------------- |
+| `user`        | Yes      | The member to ban                                  |
+| `reason`      | No       | Reason for the ban                                 |
+| `delete_days` | No       | Days of message history to delete (0–7, default 0) |
+
+---
 
 ### Softban
 
-Ban and immediately unban a member to purge their recent messages without a permanent ban.
+Ban and immediately unban a member. This is used to purge a member's recent messages without issuing a permanent ban — they can still rejoin via invite.
 
 ```
-/mod softban @user reason:Message cleanup
+/mod softban @user reason:Cleanup
+/mod softban @user reason:Cleanup delete_days:7
+c!mod softban @user Cleanup
 ```
+
+| Option        | Required | Description                                 |
+| ------------- | -------- | ------------------------------------------- |
+| `user`        | Yes      | The member to softban                       |
+| `reason`      | No       | Reason                                      |
+| `delete_days` | No       | Days of messages to delete (0–7, default 3) |
+
+The action is logged as `[Softban]` in the mod log so it's distinguishable from a regular ban.
+
+---
 
 ### Kick
 
-Remove a member from the server. They can rejoin via invite.
+Remove a member from the server. They can rejoin via an invite link at any time.
 
 ```
 /mod kick @user reason:Inappropriate behavior
+c!mod kick @user Inappropriate behavior
 ```
+
+| Option   | Required | Description         |
+| -------- | -------- | ------------------- |
+| `user`   | Yes      | The member to kick  |
+| `reason` | No       | Reason for the kick |
+
+---
 
 ### Slowmode
 
-Set the slowmode interval for the current channel.
+Set the slowmode delay for a channel. Set to `0` to disable slowmode.
 
 ```
-/mod slowmode duration:10s
+/mod slowmode seconds:10
+/mod slowmode seconds:10 channel:#general
+/mod slowmode seconds:0
+c!mod slowmode 10
+c!mod slowmode 0
 ```
+
+| Option    | Required | Description                                          |
+| --------- | -------- | ---------------------------------------------------- |
+| `seconds` | Yes      | Slowmode in seconds (0–21600). `0` disables slowmode |
+| `channel` | No       | Target channel (defaults to the current channel)     |
+
+Maximum slowmode is 6 hours (21600 seconds).
+
+---
 
 ### Lockdown
 
-Toggle channel lockdown — prevents all members from sending messages in the channel.
+Toggle a channel lockdown. When locked, the `@everyone` role loses the **Send Messages** permission for that channel. Running the command again unlocks it. A visible notice is posted in the locked channel.
 
 ```
 /mod lockdown
+/mod lockdown channel:#general
+c!mod lockdown
+c!mod lockdown #general
 ```
+
+| Option    | Required | Description                                                 |
+| --------- | -------- | ----------------------------------------------------------- |
+| `channel` | No       | Channel to lock or unlock (defaults to the current channel) |
+
+Lockdown state is toggled — running the command on an already-locked channel will unlock it.
+
+---
+
+### Silent Ban
+
+Silently restrict a user from sending messages or joining voice channels without notifying them. See the [Silent Ban](/docs/silent-ban) page for full details.
+
+```
+/mod silentban action:Add user:@user duration:1d reason:Suspected alt
+/mod silentban action:Remove user:@user
+/mod silentban action:List
+```
+
+---
 
 ### History
 
-View the full sanction history for a member, including warns, mutes, bans, kicks, and timeouts.
+View the last 10 moderation actions for a user. Works with members currently in the server or by raw user ID for members who have left.
 
 ```
-/mod history @user
+/mod history user:@user
+/mod history user_id:123456789012345678
+c!mod history @user
+c!mod history 123456789012345678
 ```
+
+| Option    | Required     | Description                                    |
+| --------- | ------------ | ---------------------------------------------- |
+| `user`    | One of these | Mention a member currently in the server       |
+| `user_id` | One of these | Raw Discord user ID (works for users who left) |
+
+Each entry in the history shows the action type, timestamp (relative), duration (if applicable), and reason.
+
+## Mod Log Format
+
+Every moderation action posts to the configured log channel with:
+
+- Action type (WARN, MUTE, BAN, etc.)
+- Target user and their ID
+- Moderator who issued the action
+- Reason (if provided)
+- Duration and expiry time (if applicable)
+
+All actions are also stored in the database and visible in the [Logs section](/docs/dashboard) of the web dashboard.

@@ -1,35 +1,61 @@
 ---
 title: Introduction
-description: Welcome to the Caramel documentation. Learn how to set up and use the modular Discord bot built to scale.
+description: Caramel is a modular Discord bot built for server administrators who want professional-grade moderation and automation without the bloat.
 ---
 
 ## What is Caramel?
 
-**Caramel** is a modular Discord bot built with the [Sapphire Framework](https://sapphirejs.dev/) and TypeScript. Designed from the ground up with clean architecture, async job processing, and a two-layer caching system — built to scale.
+**Caramel** is a modular Discord bot built with the [Sapphire Framework](https://sapphirejs.dev/) and TypeScript. Every feature is an independent module — you enable only what your server needs, configure it exactly how you want, and Caramel handles the rest.
+
+Caramel pairs a full-featured Discord bot with a **web dashboard**. Whether you prefer clicking through a UI or running slash commands directly in Discord, both paths are fully supported and stay in sync in real time.
 
 ## Core Features
 
-- **Moderation** — Full suite: warn, mute, ban, softban, kick, timeout, slowmode, lockdown, and sanction history.
-- **Vanity Tracker** — Detects custom status keywords and automatically assigns or removes roles.
-- **Silent Ban** — Silently restricts users from sending messages or joining voice without notifying them.
-- **Module System** — Each feature is an independent module. Enable, disable, configure, or factory reset per guild.
-- **Auto-Mute Restore** — Reapplies active mutes on rejoin, with automatic expiry via background workers.
+- **Moderation** — Complete suite: warn, mute, ban, softban, kick, timeout, unmute, slowmode, lockdown, and full sanction history. Every action is logged and tracked.
+- **Vanity Tracker** — Monitors member custom statuses for a keyword and automatically assigns or revokes a designated role. Powered by async BullMQ workers — zero command lag.
+- **Silent Ban** — Restricts users from sending messages and joining voice channels without any visible notification. Includes progressive rate-limit escalation to mask the restriction.
+- **Auto-Mute Restore** — If a muted member leaves and rejoins, their mute is automatically reapplied. Timed mutes expire automatically via background workers.
+- **Module System** — Every feature is independently toggleable per server. Enable, disable, configure, or factory reset any module without affecting the others.
+
+## Two Ways to Manage Everything
+
+### Web Dashboard
+
+Visit the dashboard after logging in with Discord. From there you can:
+
+- Enable or disable modules with a single toggle
+- Configure log channels, muted roles, punishment thresholds, and vanity settings using a live channel and role picker
+- Browse your server's full moderation log history with search, type filters, and pagination
+- View server statistics and a 7-day moderation activity chart
+
+### Discord Slash Commands
+
+Every configuration action is also available directly in Discord:
+
+```
+/module setup name:Moderation
+/module enable name:Moderation
+/mod ban @user reason:Repeated violations
+```
+
+Both methods write to the same database and stay in sync — use whichever fits your workflow.
 
 ## Quick Start
 
-1. [Add Caramel to your server](#)
-2. Run `/module setup name:Moderation` to configure moderation
+1. Add Caramel to your server
+2. Run `/module setup name:Moderation` to configure the moderation module
 3. Run `/module enable name:Moderation` to activate it
 
-That's it. Check the [Getting Started](/docs/getting-started) guide for a full walkthrough.
+That's it. Check the [Getting Started](/docs/getting-started) guide for a complete walkthrough, or go to [Web Dashboard](/docs/dashboard) if you prefer managing things from the UI.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | Node.js + TypeScript |
-| Framework | Sapphire Framework |
-| Database | PostgreSQL via Sequelize |
-| Cache | Redis (ioredis) |
-| Queue | BullMQ |
-| Logger | Winston |
+| Layer         | Technology                 |
+| ------------- | -------------------------- |
+| Runtime       | Node.js + TypeScript       |
+| Framework     | Sapphire Framework         |
+| Database      | PostgreSQL via Prisma v7   |
+| Cache         | Redis (ioredis)            |
+| Queue         | BullMQ                     |
+| Logger        | Winston                    |
+| Web Dashboard | Next.js 16, NextAuth.js v5 |
