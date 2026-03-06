@@ -1,0 +1,50 @@
+---
+title: Command Reference
+description: Complete list of all Caramel commands with usage and descriptions.
+---
+
+## Overview
+
+All commands work with both **slash commands** (`/`) and the **message prefix** (`c!`).
+
+## Moderation Commands
+
+Available via `/mod` or `c!mod`:
+
+| Command | Usage | Description |
+|---------|-------|-------------|
+| `warn` | `/mod warn @user reason:text` | Issue a warning to a member |
+| `mute` | `/mod mute @user duration:1h reason:text` | Mute with role assignment (supports duration) |
+| `timeout` | `/mod timeout @user duration:30m reason:text` | Apply Discord's native timeout |
+| `unmute` | `/mod unmute @user` | Remove a mute or timeout |
+| `ban` | `/mod ban @user reason:text` | Ban a member |
+| `softban` | `/mod softban @user reason:text` | Ban + unban to purge messages |
+| `kick` | `/mod kick @user reason:text` | Kick a member |
+| `silentban` | `/mod silentban add/remove/list @user` | Manage silent bans |
+| `slowmode` | `/mod slowmode duration:10s` | Set channel slowmode |
+| `lockdown` | `/mod lockdown` | Toggle channel lockdown |
+| `history` | `/mod history @user` | View sanction history |
+
+## Module Commands
+
+Available via `/module`:
+
+| Command | Usage | Description |
+|---------|-------|-------------|
+| `setup` | `/module setup name:ModuleName` | Interactive configuration via modal |
+| `settings` | `/module settings name:ModuleName` | View current configuration |
+| `enable` | `/module enable name:ModuleName` | Enable a module |
+| `disable` | `/module disable name:ModuleName` | Disable a module |
+| `reset` | `/module reset name:ModuleName` | Factory reset a module |
+
+## Prefix Commands
+
+Every slash command has a prefix equivalent using `c!`:
+
+```
+c!mod ban @user Spamming
+c!mod mute @user 1h Being disruptive
+c!mod history @user
+```
+
+The prefix is configurable during module setup (default: `c!`).

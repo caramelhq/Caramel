@@ -1,0 +1,57 @@
+---
+title: Getting Started
+description: Add Caramel to your Discord server and set up your first module in minutes.
+---
+
+## Adding Caramel
+
+Click the invite link to add Caramel to your server. You'll need **Manage Server** permissions on the target guild.
+
+Once added, Caramel will join with minimal permissions. Each module requests only what it needs when you enable it.
+
+## Your First Module
+
+Caramel uses a **module system** — nothing is active by default. You choose what to enable.
+
+### 1. Set up a module
+
+Run the setup command to configure a module via an interactive modal:
+
+```
+/module setup name:Moderation
+```
+
+This opens a modal where you can configure the module's settings (log channel, mute role, prefix, etc.).
+
+### 2. Enable the module
+
+```
+/module enable name:Moderation
+```
+
+The module is now active for your server. Repeat for any other modules you want.
+
+### 3. Verify it's working
+
+```
+/module settings name:Moderation
+```
+
+This shows the current configuration of the module so you can confirm everything looks right.
+
+## Available Modules
+
+| Module | Description |
+|--------|------------|
+| Moderation | Warn, mute, ban, kick, timeout, slowmode, lockdown, history |
+| Vanity Tracker | Auto-assign roles based on custom status keywords |
+| Silent Ban | Stealth restrict users from messages and voice |
+
+## Prefix
+
+Caramel supports both slash commands and the `c!` message prefix. Every command works with either.
+
+```
+/mod ban @user reason:Spamming
+c!mod ban @user Spamming
+```
