@@ -1,16 +1,23 @@
 {
   "name": "caramellabs",
   "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "web"
+  ],
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsc"
+    "build": "tsc",
+    "web:dev": "npm run dev --workspace=web",
+    "web:build": "npm run build --workspace=web",
+    "web:start": "npm run start --workspace=web"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "description": "",
+  "license": "MIT",
+  "description": "Modular Discord bot with web portal",
   "devDependencies": {
     "@types/node": "^25.3.0",
     "@types/pg": "^8.18.0",
