@@ -30,3 +30,7 @@ web/out/
 web/.turbopack/
 web/.source/
 web/pnpm-lock.yaml
+
+# LLM context / agent instruction files
+AGENTS.md
+web/CHAT_CONTEXT.md
