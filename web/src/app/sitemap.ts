@@ -1,7 +1,11 @@
 import type { MetadataRoute } from "next";
 import { source } from "@/lib/source";
 
-const BASE_URL = "https://caramelhq.xyz";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "https://caramelhq.xyz");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const docPages = source.getPages().map((page) => ({
