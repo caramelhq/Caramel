@@ -1,0 +1,70 @@
+---
+title: Module System
+description: Independent, per-guild feature modules. Enable only what you need.
+---
+
+## Overview
+
+Every feature in Caramel is an **independent module**. Nothing is active by default — you choose what to enable for each server. Modules don't affect each other; you can reset one without touching the rest.
+
+## Commands
+
+### Setup
+
+Open an interactive modal to configure a module's settings:
+
+```
+/module setup name:Moderation
+```
+
+### Enable
+
+Activate a module for the current server:
+
+```
+/module enable name:Moderation
+```
+
+### Disable
+
+Deactivate a module without losing its configuration:
+
+```
+/module disable name:Vanity Tracker
+```
+
+### Settings
+
+View the current configuration of a module:
+
+```
+/module settings name:Moderation
+```
+
+### Reset
+
+Factory reset a module — clears all configuration and disables it:
+
+```
+/module reset name:Moderation
+```
+
+## Available Modules
+
+| Module | Key Features |
+|--------|-------------|
+| Moderation | warn, mute, ban, softban, kick, timeout, slowmode, lockdown, history |
+| Vanity Tracker | keyword detection, auto role assign/revoke, async processing |
+| Silent Ban | stealth message/voice restriction, rate-limit escalation |
+
+## Validation
+
+Before a module can be enabled, Caramel runs **pre-enable validation** to ensure all required configuration is in place. If something is missing (e.g., no mute role configured for Moderation), the bot will tell you what needs to be set up first.
+
+## Per-Guild Isolation
+
+Each guild has its own independent module configuration stored in the database. This means:
+
+- Server A can have Moderation enabled and Vanity Tracker disabled
+- Server B can have the opposite configuration
+- Resetting a module in one server has no effect on any other server

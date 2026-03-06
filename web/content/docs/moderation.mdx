@@ -1,0 +1,104 @@
+---
+title: Moderation
+description: Full moderation suite — warn, mute, ban, kick, timeout, slowmode, lockdown, and sanction history.
+---
+
+## Overview
+
+The Moderation module provides a complete set of tools to manage your server. All commands support both `/mod` slash commands and the `c!mod` prefix.
+
+## Setup
+
+```
+/module setup name:Moderation
+/module enable name:Moderation
+```
+
+During setup you can configure:
+- **Log channel** — where moderation actions are logged
+- **Mute role** — the role applied for mute commands
+- **Prefix** — message command prefix (default: `c!`)
+
+## Commands
+
+### Warn
+
+Issue a warning to a member. Warnings are logged and can be reviewed via the history command.
+
+```
+/mod warn @user reason:Breaking rules
+```
+
+### Mute
+
+Mute a member by assigning the configured mute role. Supports optional duration for temporary mutes.
+
+```
+/mod mute @user duration:1h reason:Spamming
+```
+
+Caramel includes **auto-mute restore** — if a muted member leaves and rejoins, the mute is automatically reapplied. Mutes expire automatically via background workers.
+
+### Timeout
+
+Apply Discord's native timeout to a member.
+
+```
+/mod timeout @user duration:30m reason:Disruptive behavior
+```
+
+### Unmute
+
+Remove a mute role or timeout from a member.
+
+```
+/mod unmute @user
+```
+
+### Ban
+
+Permanently ban a member from the server.
+
+```
+/mod ban @user reason:Repeated violations
+```
+
+### Softban
+
+Ban and immediately unban a member to purge their recent messages without a permanent ban.
+
+```
+/mod softban @user reason:Message cleanup
+```
+
+### Kick
+
+Remove a member from the server. They can rejoin via invite.
+
+```
+/mod kick @user reason:Inappropriate behavior
+```
+
+### Slowmode
+
+Set the slowmode interval for the current channel.
+
+```
+/mod slowmode duration:10s
+```
+
+### Lockdown
+
+Toggle channel lockdown — prevents all members from sending messages in the channel.
+
+```
+/mod lockdown
+```
+
+### History
+
+View the full sanction history for a member, including warns, mutes, bans, kicks, and timeouts.
+
+```
+/mod history @user
+```

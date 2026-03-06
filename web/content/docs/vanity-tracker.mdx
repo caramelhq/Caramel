@@ -1,0 +1,35 @@
+---
+title: Vanity Tracker
+description: Automatically assign roles based on custom status keywords. Powered by async job processing.
+---
+
+## Overview
+
+The Vanity Tracker module monitors member custom statuses for specific keywords. When a match is found, it automatically assigns a designated role. When the keyword is removed, the role is revoked.
+
+All checks run **asynchronously** via BullMQ workers — zero lag on your commands, zero missed updates.
+
+## Setup
+
+```
+/module setup name:Vanity Tracker
+/module enable name:Vanity Tracker
+```
+
+During setup you'll configure:
+- **Keyword** — the text to detect in custom statuses (e.g., your server's vanity URL)
+- **Role** — the role to assign when the keyword is found
+- **Channel** — optional notification channel for status changes
+
+## How It Works
+
+1. Caramel periodically scans member presence updates
+2. When a member's custom status contains the configured keyword, the vanity role is assigned
+3. When the keyword is removed from their status, the role is automatically revoked
+4. All processing happens in the background via BullMQ job queues
+
+## Use Cases
+
+- **Vanity URL promotion** — reward members who advertise your server's vanity URL in their status
+- **Event participation** — track members displaying event-related keywords
+- **Community engagement** — incentivize members to represent your server
