@@ -63,19 +63,14 @@ export async function generateMetadata(props: {
       title,
       description,
       images: [
-        {
-          url: "/caramel-logo.webp",
-          width: 512,
-          height: 512,
-          alt: "Caramel Bot",
-        },
+        { url: "/og-image.png", width: 1080, height: 570, alt: "Caramel Bot" },
       ],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
-      images: ["/caramel-logo.webp"],
+      images: ["/og-image.png"],
     },
   };
 }

@@ -8,18 +8,18 @@ export const metadata: Metadata = {
     description: "Sign in with Discord to manage your servers with Caramel.",
     images: [
       {
-        url: "/caramel-logo.webp",
-        width: 512,
-        height: 512,
-        alt: "Caramel Bot",
+        url: "/og-image.png",
+        width: 1080,
+        height: 570,
+        alt: "Caramel — Make it simple, make it perfect.",
       },
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Sign In | Caramel",
     description: "Sign in with Discord to manage your servers with Caramel.",
-    images: ["/caramel-logo.webp"],
+    images: ["/og-image.png"],
   },
   robots: {
     index: false,

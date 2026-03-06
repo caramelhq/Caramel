@@ -36,19 +36,19 @@ export const metadata: Metadata = {
       "A modular Discord bot built to scale. Moderation, vanity tracking, silent bans, and more — all configurable from a web dashboard.",
     images: [
       {
-        url: "/caramel-logo.webp",
-        width: 512,
-        height: 512,
-        alt: "Caramel Bot",
+        url: "/og-image.png",
+        width: 1080,
+        height: 570,
+        alt: "Caramel — Make it simple, make it perfect.",
       },
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Caramel — Make it simple, make it perfect.",
     description:
       "A modular Discord bot built to scale. Moderation, vanity tracking, silent bans, and more.",
-    images: ["/caramel-logo.webp"],
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
