@@ -1,0 +1,64 @@
+---
+title: Self-Hosting
+description: How to install and run your own instance of Caramel.
+---
+
+## Prerequisites
+
+- **Node.js** 18+
+- **PostgreSQL** database
+- **Redis** server
+
+## Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/CaramelHQ/Caramel
+cd caramel
+npm install
+```
+
+## Environment
+
+Create a `.env` file based on `.env.example`:
+
+```bash
+DISCORD_TOKEN=your_bot_token_here
+DATABASE_URL=postgres://user:pass@localhost:5432/caramel
+REDIS_URL=redis://localhost:6379
+PREFIX=c!
+```
+
+| Variable | Description |
+|----------|------------|
+| `DISCORD_TOKEN` | Your Discord bot token from the Developer Portal |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string |
+| `PREFIX` | Message command prefix (default: `c!`) |
+
+## Running
+
+### Development
+
+```bash
+npm run dev
+```
+
+### Production
+
+```bash
+npm run build
+npm start
+```
+
+## Database
+
+Caramel uses **Sequelize** as the ORM. Models are defined in `src/database/models/` and include:
+
+- `GuildConfig` — per-guild module configuration
+- `ModLog` — moderation action history
+- `SilentBan` — silent ban records
+- Additional models per module
+
+The database schema is synced automatically on startup.
