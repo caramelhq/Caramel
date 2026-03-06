@@ -30,6 +30,7 @@ web/out/
 web/.turbopack/
 web/.source/
 web/pnpm-lock.yaml
+web/next-env.d.ts
 
 # LLM context / agent instruction files
 AGENTS.md

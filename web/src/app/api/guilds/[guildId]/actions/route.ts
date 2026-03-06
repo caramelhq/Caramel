@@ -3,8 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveUsernames } from "@/lib/discord";
 import { DEV_BYPASS, DEV_ACTIONS } from "@/lib/dev";
-
-export async function GET(req: Request, { params }: { params: Promise<{ guildId: string }> }) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ guildId: string }> },
+) {
   if (DEV_BYPASS) {
     const { searchParams } = new URL(req.url);
     const limit = Math.min(parseInt(searchParams.get("limit") ?? "5"), 50);
@@ -45,6 +47,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ guildId:
     return NextResponse.json(formatted);
   } catch (err) {
     console.error("Failed to fetch actions:", err);
-    return NextResponse.json({ error: "Failed to fetch actions" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch actions" },
+      { status: 500 },
+    );
   }
 }

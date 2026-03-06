@@ -1,61 +1,104 @@
 ---
 title: Silent Ban
-description: Stealth-restrict users from sending messages or joining voice without notifying them.
+description: Stealth-restrict users from sending messages or joining voice without notifying them. Includes progressive rate-limit escalation.
 ---
 
 ## Overview
 
-Silent Ban is a unique moderation tool that restricts a user's ability to send messages and join voice channels — **without** sending them any notification. The user won't know they've been restricted.
+Silent Ban is a covert moderation tool that restricts a user's ability to interact with your server — **without sending them any notification**. The user won't know they've been restricted. Their messages are deleted instantly, and voice channel joins are immediately reversed.
 
-This is useful for handling bad actors who would create alt accounts or cause disruption if they knew they were banned.
+This is particularly useful for:
 
-## Setup
+- Suspected ban evaders you're monitoring before taking permanent action
+- Bad actors who would create alt accounts if they knew they were moderated
+- Situations where you want to observe behavior without tipping off the user
 
-Silent Ban is part of the Moderation module. Ensure it's enabled:
-
-```
-/module setup name:Moderation
-/module enable name:Moderation
-```
+Silent Ban is part of the **Moderation** module. Ensure it's set up and enabled before using these commands.
 
 ## Commands
 
-### Add a silent ban
+### Add a Silent Ban
 
 ```
-/mod silentban add @user
+/mod silentban action:Add user:@user
+/mod silentban action:Add user:@user duration:1d reason:Suspected alt
+c!mod silentban add @user
+c!mod silentban add @user 7d Ban evasion suspected
 ```
 
-The user will immediately be unable to:
-- Send messages in any channel
-- Join voice channels
+| Option     | Required | Description                                 |
+| ---------- | -------- | ------------------------------------------- |
+| `action`   | Yes      | Set to `Add`                                |
+| `user`     | Yes      | The user to silently ban                    |
+| `duration` | No       | How long the ban lasts. Omit for permanent. |
+| `reason`   | No       | Internal reason (not shown to the user)     |
 
-No notification or DM is sent to the user.
+**Available durations:**
 
-### Remove a silent ban
+| Value | Duration   |
+| ----- | ---------- |
+| `30m` | 30 minutes |
+| `1h`  | 1 hour     |
+| `6h`  | 6 hours    |
+| `1d`  | 1 day      |
+| `7d`  | 7 days     |
+| `30d` | 30 days    |
+
+Once applied:
+
+- Any message the user sends is **immediately deleted**
+- Any voice channel the user joins they are **immediately disconnected from**
+- No notification, DM, or visible reaction is sent to the user
+
+---
+
+### Remove a Silent Ban
 
 ```
-/mod silentban remove @user
+/mod silentban action:Remove user:@user
+c!mod silentban remove @user
 ```
 
-Restores the user's normal permissions.
+| Option   | Required | Description       |
+| -------- | -------- | ----------------- |
+| `action` | Yes      | Set to `Remove`   |
+| `user`   | Yes      | The user to unban |
 
-### List silent bans
+Removes the silent ban from both the database and Redis cache. The user immediately regains the ability to send messages and join voice channels normally.
+
+---
+
+### List Silent Bans
 
 ```
-/mod silentban list
+/mod silentban action:List
+c!mod silentban list
 ```
 
-View all currently silent-banned members in the server.
+Displays all currently active silent bans in your server, showing each user and their ban expiry time.
 
-## Rate-Limit Escalation
+## Progressive Rate-Limit Escalation
 
-Silent Ban includes **progressive rate-limit escalation**. If a silent-banned user repeatedly attempts to send messages, the cooldown between their attempts increases progressively, making it even harder for them to test whether they're restricted.
+Silent Ban includes a **rate-limit escalation system** that activates when a banned user repeatedly attempts to send messages. Rather than just deleting every message, the system tracks their attempt frequency and applies escalating cooldown periods.
+
+The more a user attempts to send messages, the longer the delay before they can attempt again. This makes it progressively harder for the user to notice a consistent pattern in their message deletions, preserving the stealth nature of the ban.
+
+Rate-limit state is tracked in Redis and persists across bot restarts.
+
+## Timed Expiry
+
+When a duration is set, the silent ban expires automatically via a background BullMQ worker. No manual removal is needed — the ban record is cleaned up from both the database and Redis when the timer fires.
 
 ## Background Worker
 
-The Silent Ban system runs as a dedicated background worker. This ensures:
+The Silent Ban system runs as a dedicated background worker that handles:
 
-- Restrictions persist across bot restarts
-- Rate-limit states are maintained in Redis
-- Zero impact on command response times
+- Message deletion jobs (queued when rate-limiting is active)
+- Voice disconnect jobs (fired when a banned user joins voice)
+- Ban expiry jobs (fires when a timed ban reaches its end)
+
+All operations run asynchronously — there is zero impact on command response times and no blocking of other bot functionality.
+
+## Persistence
+
+Silent bans survive bot restarts. On startup, the bot reloads all active bans from the database into Redis. If a banned user was active while the bot was offline, their restrictions are re-applied the moment they interact with the server again.

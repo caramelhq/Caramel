@@ -1,6 +1,6 @@
 ---
 title: Self-Hosting
-description: How to install and run your own instance of Caramel.
+description: How to install and run your own instance of Caramel, including the web dashboard.
 ---
 
 ## Prerequisites
@@ -9,41 +9,101 @@ description: How to install and run your own instance of Caramel.
 - **PostgreSQL** database
 - **Redis** server
 
+The repo includes a `docker-compose.yml` that spins up both PostgreSQL (port 5433) and Redis (port 6380) locally — the recommended way to get started.
+
 ## Installation
 
 Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/CaramelHQ/Caramel
-cd caramel
+cd Caramel
 npm install
 ```
 
-## Environment
+This installs dependencies for both the bot (root) and the web portal (`web/` workspace).
 
-Create a `.env` file based on `.env.example`:
+## Bot Environment
+
+Create a `.env` file at the repo root:
 
 ```bash
 DISCORD_TOKEN=your_bot_token_here
-DATABASE_URL=postgres://user:pass@localhost:5432/caramel
-REDIS_URL=redis://localhost:6379
+DATABASE_URL=postgresql://user:pass@localhost:5433/caramel
+REDIS_URL=redis://localhost:6380
 PREFIX=c!
 ```
 
-| Variable | Description |
-|----------|------------|
-| `DISCORD_TOKEN` | Your Discord bot token from the Developer Portal |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string |
-| `PREFIX` | Message command prefix (default: `c!`) |
+| Variable        | Description                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------- |
+| `DISCORD_TOKEN` | Your Discord bot token from the [Developer Portal](https://discord.com/developers/applications) |
+| `DATABASE_URL`  | PostgreSQL connection string                                                                    |
+| `REDIS_URL`     | Redis connection string                                                                         |
+| `PREFIX`        | Message command prefix (default: `c!`)                                                          |
 
-## Running
+## Web Dashboard Environment
+
+Create a `web/.env.local` file:
+
+```bash
+NEXT_PUBLIC_DEV_BYPASS=false
+DATABASE_URL=postgresql://user:pass@localhost:5433/caramel
+DISCORD_CLIENT_ID=your_client_id
+DISCORD_CLIENT_SECRET=your_client_secret
+AUTH_SECRET=a_random_32_char_string_here
+NEXTAUTH_URL=http://localhost:3000
+DISCORD_BOT_TOKEN=your_bot_token_here
+```
+
+| Variable                 | Description                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| `NEXT_PUBLIC_DEV_BYPASS` | Set `true` to skip OAuth and use mock data (useful for frontend dev) |
+| `DATABASE_URL`           | Same PostgreSQL DB as the bot                                        |
+| `DISCORD_CLIENT_ID`      | OAuth2 client ID from the Developer Portal                           |
+| `DISCORD_CLIENT_SECRET`  | OAuth2 client secret from the Developer Portal                       |
+| `AUTH_SECRET`            | Random 32+ character string for NextAuth JWT signing                 |
+| `NEXTAUTH_URL`           | Base URL for NextAuth (e.g. `http://localhost:3000`)                 |
+| `DISCORD_BOT_TOKEN`      | Bot token — used to fetch guild info via the Discord Bot API         |
+
+Add `http://localhost:3000/api/auth/callback/discord` as a redirect URI in your Discord application's OAuth2 settings.
+
+## Database
+
+Caramel uses **Prisma v7** as the ORM. Run migrations to set up the schema:
+
+```bash
+npx prisma migrate deploy
+```
+
+Or for development (creates a migration and applies it):
+
+```bash
+npx prisma migrate dev --name init
+```
+
+After any schema change, regenerate the Prisma client:
+
+```bash
+npx prisma generate
+```
+
+Database models:
+
+- `GuildConfig` — per-guild module configuration
+- `ModLog` — all moderation actions
+- `ActiveMute` — currently active mutes
+- `SilentBan` — active silent bans
+- `WarnLog` — warning history
+
+## Running the Bot
 
 ### Development
 
 ```bash
 npm run dev
 ```
+
+Runs the bot with `tsx` in watch mode — no compile step needed.
 
 ### Production
 
@@ -52,13 +112,34 @@ npm run build
 npm start
 ```
 
-## Database
+## Running the Web Dashboard
 
-Caramel uses **Sequelize** as the ORM. Models are defined in `src/database/models/` and include:
+### Development
 
-- `GuildConfig` — per-guild module configuration
-- `ModLog` — moderation action history
-- `SilentBan` — silent ban records
-- Additional models per module
+```bash
+npm run web:dev
+```
 
-The database schema is synced automatically on startup.
+Starts the Next.js dev server at `http://localhost:3000` using Turbopack.
+
+### Production
+
+```bash
+npm run web:build
+npm run web:start
+```
+
+## Local Docker Setup
+
+Use the included `docker-compose.yml` to start PostgreSQL and Redis:
+
+```bash
+docker-compose up -d
+```
+
+This starts:
+
+- PostgreSQL on port **5433** (non-standard, to avoid conflicts)
+- Redis on port **6380** (non-standard, to avoid conflicts)
+
+Make sure your `DATABASE_URL` and `REDIS_URL` use these ports when running locally.
