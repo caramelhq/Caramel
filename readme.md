@@ -33,7 +33,7 @@ Caramel is a modular Discord bot built with [Sapphire Framework](https://sapphir
 |---|---|
 | Runtime | Node.js + TypeScript |
 | Framework | Sapphire Framework |
-| Database | PostgreSQL via Sequelize |
+| Database | PostgreSQL via Prisma |
 | Cache | Redis (ioredis) |
 | Queue | BullMQ |
 | Logger | Winston |
