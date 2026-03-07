@@ -12,6 +12,10 @@ dist/
 .env.production.local
 .env.test.local
 
+# Lockfiles (project uses npm — ignore alternatives)
+pnpm-lock.yaml
+yarn.lock
+
 # Logs
 *.log
 npm-debug.log*
