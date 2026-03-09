@@ -1,0 +1,5 @@
+{
+  "unexpected": "`🔴` Ha ocurrido un error.",
+  "memberNotFound": "`❌` Miembro no encontrado.",
+  "modConfigMissing": "`❌` El módulo de moderación no está configurado para este servidor."
+}

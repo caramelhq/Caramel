@@ -1,0 +1,19 @@
+{
+  "banana": {
+    "description": "🍌 How long is your banana?",
+    "response": "**{{user}}**'s banana is **{{cm}}cm** long.",
+    "results": {
+      "tragic": "💀 Tragic",
+      "rough": "😬 Rough",
+      "mid": "😐 Mid",
+      "notBad": "😏 Not bad",
+      "impressive": "😳 Impressive",
+      "legendary": "🏆 Legendary"
+    }
+  },
+  "roll": {
+    "description": "🎲 Roll a dice!",
+    "optionDescription": "Maximum number (default: 6)",
+    "response": "**{{user}}** rolled a dice and got **{{result}}**! (1-{{max}})"
+  }
+}

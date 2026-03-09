@@ -1,0 +1,57 @@
+{
+  "mod": {
+    "validate": {
+      "bot": "`❌` No puedes moderar a un bot.",
+      "self": "`❌` No puedes moderarte a ti mismo.",
+      "owner": "`❌` No puedes moderar al dueño del servidor.",
+      "higherRole": "`❌` No puedes moderar a alguien con un rol igual o superior."
+    },
+    "setup": {
+      "configMissing": "`❌` El módulo de moderación no está configurado o está deshabilitado. Usa `/module setup name:Moderation` primero."
+    },
+    "warn": {
+      "success": "{{emoji}} **{{user}}** ha sido advertido. Advertencias totales: `{{count}}`"
+    },
+    "mute": {
+      "success": "{{emoji}} **{{user}}** ha sido silenciado{{duration}}.",
+      "roleMissing": "`❌` El rol de silenciado no está configurado. Ejecuta `/module setup name:Moderation` de nuevo.",
+      "notMuted": "`❌` Este miembro no está silenciado.",
+      "unmuteSuccess": "{{emoji}} **{{user}}** ha sido desilenciado.",
+      "unmuteHigherRole": "`❌` No puedes desilenciar a alguien con un rol igual o superior."
+    },
+    "ban": {
+      "success": "{{emoji}} **{{user}}** ha sido baneado.",
+      "notBannable": "`❌` No puedo banear a este miembro. Comprueba mi posición de rol.",
+      "softbanSuccess": "{{emoji}} **{{user}}** ha sido baneo suave (softban). Se eliminaron los mensajes de los últimos **{{days}} días**.",
+      "softbanSuccessMsg": "{{emoji}} **{{user}}** ha sido baneo suave."
+    },
+    "kick": {
+      "success": "{{emoji}} **{{user}}** ha sido expulsado.",
+      "notKickable": "`❌` No puedo expulsar a este miembro. Comprueba mi posición de rol."
+    },
+    "silentban": {
+      "self": "`❌` No puedes banear silenciosamente a ti mismo.",
+      "bot": "`❌` No puedes banear silenciosamente a bots.",
+      "specifyUser": "`❌` Debes especificar un usuario.",
+      "addError": "`❌` Error al aplicar el baneo silencioso.",
+      "removeError": "`❌` Error al eliminar el baneo silencioso.",
+      "listError": "`❌` Error al listar los baneos silenciosos.",
+      "noBans": "`📋` No hay baneos silenciosos activos."
+    },
+    "lockdown": {
+      "locked": "{{emoji}} <#{{channel}}> ha sido bloqueado.",
+      "unlocked": "{{emoji}} <#{{channel}}> ha sido desbloqueado.",
+      "lockedMsg": "{{emoji}} Este canal ha sido bloqueado.",
+      "unlockedMsg": "{{emoji}} Este canal ha sido desbloqueado."
+    },
+    "slowmode": {
+      "success": "{{emoji}} Modo lento establecido en **{{seconds}}s** en <#{{channel}}>. ",
+      "disabled": "{{emoji}} Modo lento desactivado en <#{{channel}}>."
+    },
+    "history": {
+      "specifyUser": "`❌` Por favor, especifica un usuario o ID de usuario.",
+      "noSanctions": "`📋` No se encontraron sanciones para este usuario.",
+      "title": "Historial de sanciones de <@{{user}}>"
+    }
+  }
+}

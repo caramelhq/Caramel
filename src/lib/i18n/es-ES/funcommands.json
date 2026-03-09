@@ -1,0 +1,19 @@
+{
+  "banana": {
+    "description": "🍌 ¿Cuánto mide tu banana?",
+    "response": "La banana de **{{user}}** mide **{{cm}}cm**.",
+    "results": {
+      "tragic": "💀 Trágico",
+      "rough": "😬 Complicado",
+      "mid": "😐 Normal",
+      "notBad": "😏 Nada mal",
+      "impressive": "😳 Impresionante",
+      "legendary": "🏆 Legendario"
+    }
+  },
+  "roll": {
+    "description": "🎲 ¡Tira un dado!",
+    "optionDescription": "Número máximo (por defecto: 6)",
+    "response": "**{{user}}** lanzó un dado y salió **{{result}}**! (1-{{max}})"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "vanity": {
+    "roleAdded": "Assigned vanity role: `{{role}}`",
+    "roleRemoved": "Removed vanity role: `{{role}}`"
+  },
+  "config": {
+    "language": {
+      "invalid": "`❌` Invalid language. Available: `en`, `es`.",
+      "success": "`✅` Language set to **{{lang}}**."
+    },
+    "module": {
+      "notFound": "`❌` Module not found.",
+      "alreadyEnabled": "`❌` Module **{{name}}** is already enabled.",
+      "alreadyDisabled": "`❌` Module **{{name}}** is already disabled.",
+      "enabled": "Module **{{name}}** enabled.",
+      "disabled": "Module **{{name}}** disabled.",
+      "resetTitle": "Reset Module: {{name}}",
+      "resetDesc": "This will delete all configuration for the **{{name}}** module in this server.",
+      "resetDeletions": "The following data will be deleted:",
+      "resetConfirm": "Yes, reset everything",
+      "resetCancel": "No, keep it",
+      "resetSuccess": "`✅` Module **{{name}}** has been reset.",
+      "setupTitle": "Setup: {{name}}",
+      "setupDesc": "You are about to configure the **{{name}}** module.",
+      "setupConfirm": "Yes, proceed",
+      "setupCancel": "No, cancel",
+      "setupSuccess": "`✅` Module **{{name}}** has been configured."
+    }
+  }
+}

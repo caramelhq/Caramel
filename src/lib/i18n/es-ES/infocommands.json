@@ -1,0 +1,23 @@
+{
+  "user": {
+    "description": "Información de un usuario",
+    "targetDescription": "Usuario a inspeccionar (por defecto tú)",
+    "labels": {
+      "joinedDiscord": "Se unió a Discord",
+      "joinedServer": "Se unió al Servidor",
+      "highestRole": "Rol más alto",
+      "viewHistoryBtn": "Ver historial",
+      "addNoteBtn": "Agregar nota"
+    }
+  },
+  "history": {
+    "title": "Historial de Sanciones de {{user}}",
+    "specifyUser": "`❌` Por favor especifica un usuario o un ID de usuario válido.",
+    "noSanctions": "`✅` Este usuario no tiene sanciones previas registradas."
+  },
+  "errors": {
+    "notYourButton": "`❌` No puedes interactuar con este botón porque tú no ejecutaste el comando."
+  }
+}
+
+

@@ -1,0 +1,57 @@
+{
+  "mod": {
+    "validate": {
+      "bot": "`❌` You cannot moderate a bot.",
+      "self": "`❌` You cannot moderate yourself.",
+      "owner": "`❌` You cannot moderate the server owner.",
+      "higherRole": "`❌` You cannot moderate someone with an equal or higher role."
+    },
+    "setup": {
+      "configMissing": "`❌` Moderation module is not configured or disabled. Use `/module setup name:Moderation` first."
+    },
+    "warn": {
+      "success": "{{emoji}} **{{user}}** has been warned. Total warnings: `{{count}}`"
+    },
+    "mute": {
+      "success": "{{emoji}} **{{user}}** has been muted{{duration}}.",
+      "roleMissing": "`❌` Muted role is not configured. Run `/module setup name:Moderation` again.",
+      "notMuted": "`❌` This member is not muted.",
+      "unmuteSuccess": "{{emoji}} **{{user}}** has been unmuted.",
+      "unmuteHigherRole": "`❌` You cannot unmute someone with an equal or higher role."
+    },
+    "ban": {
+      "success": "{{emoji}} **{{user}}** has been banned.",
+      "notBannable": "`❌` I cannot ban this member. Check my role position.",
+      "softbanSuccess": "{{emoji}} **{{user}}** has been softbanned. Messages from the last **{{days}} days** were deleted.",
+      "softbanSuccessMsg": "{{emoji}} **{{user}}** has been softbanned."
+    },
+    "kick": {
+      "success": "{{emoji}} **{{user}}** has been kicked.",
+      "notKickable": "`❌` I cannot kick this member. Check my role position."
+    },
+    "silentban": {
+      "self": "`❌` You can't silent ban yourself.",
+      "bot": "`❌` You can't silent ban bots.",
+      "specifyUser": "`❌` You must specify a user.",
+      "addError": "`❌` Error applying the silent ban.",
+      "removeError": "`❌` Error removing the silent ban.",
+      "listError": "`❌` Error listing silent bans.",
+      "noBans": "`📋` No active silent bans."
+    },
+    "lockdown": {
+      "locked": "{{emoji}} <#{{channel}}> has been locked.",
+      "unlocked": "{{emoji}} <#{{channel}}> has been unlocked.",
+      "lockedMsg": "{{emoji}} This channel has been locked.",
+      "unlockedMsg": "{{emoji}} This channel has been unlocked."
+    },
+    "slowmode": {
+      "success": "{{emoji}} Slowmode set to **{{seconds}}s** in <#{{channel}}>. ",
+      "disabled": "{{emoji}} Slowmode disabled in <#{{channel}}>."
+    },
+    "history": {
+      "specifyUser": "`❌` Please specify a user or user ID.",
+      "noSanctions": "`📋` No sanctions found for this user.",
+      "title": "Sanction history for <@{{user}}>"
+    }
+  }
+}

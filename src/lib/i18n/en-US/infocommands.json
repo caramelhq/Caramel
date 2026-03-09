@@ -1,0 +1,23 @@
+{
+  "user": {
+    "description": "User information",
+    "targetDescription": "User to inspect (defaults to you)",
+    "labels": {
+      "joinedDiscord": "Joined Discord",
+      "joinedServer": "Joined Server",
+      "highestRole": "Highest Role",
+      "viewHistoryBtn": "View History",
+      "addNoteBtn": "Add Note"
+    }
+  },
+  "history": {
+    "title": "{{user}}'s Sanction History",
+    "specifyUser": "`❌` Please specify a user or a valid user ID.",
+    "noSanctions": "`✅` This user has no prior sanctions on record."
+  },
+  "errors": {
+    "notYourButton": "`❌` You cannot interact with this button because you didn't execute the command."
+  }
+}
+
+
