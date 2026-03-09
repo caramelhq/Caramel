@@ -1,5 +1,5 @@
 import { Listener } from '@sapphire/framework';
-import { Events } from 'discord.js';
+import { ActivityType, Events } from 'discord.js';
 import { prisma } from '../database/db';
 import { CacheManager } from '../database/CacheManager';
 
@@ -18,6 +18,8 @@ export class ReadyListener extends Listener {
     public async run() {
         const { container } = this;
 
+        // Warm up Redis cache ──────────────────
+
         try {
             const configs = await prisma.guildConfig.findMany();
 
@@ -29,6 +31,15 @@ export class ReadyListener extends Listener {
             }
         } catch (error) {
             container.logger.error('[SYNC] Failed to warm up Redis cache:', error);
+        }
+
+        // Debug loaded commands ──────────
+        const commands = container.stores.get('commands');
+        container.logger.info(`🚀 [LOADER] Loaded ${commands.size} commands.`);
+        container.logger.info(`📌 [CONFIG] Default Prefix: ${this.container.client.options.defaultPrefix}`);
+        for (const [name, command] of commands) {
+            const hasMessageRun = command.messageRun !== undefined;
+            container.logger.info(`   - ${name} [Slash: ${command.chatInputRun !== undefined}, Prefix: ${hasMessageRun}]`);
         }
     }
 }

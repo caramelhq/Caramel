@@ -15,9 +15,16 @@ export class MessageCreateListener extends Listener<typeof Events.MessageCreate>
     }
 
     public async run(message: Message) {
-        if (message.author.bot || !message.guild) return;
+        if (message.author.bot) return;
 
-        const { logger } = this.container;
+        const { logger, client } = this.container;
+        const prefix = (client.options as any).defaultPrefix ?? 'c!';
+        
+        if (message.content.startsWith(prefix)) {
+            logger.info(`[MESSAGE] Received from ${message.author.tag}: ${message.content}`);
+        }
+
+        if (!message.guild) return;
 
         try {
             const banned = await isSilentBanned(message.guild.id, message.author.id);
@@ -49,3 +56,4 @@ export class MessageCreateListener extends Listener<typeof Events.MessageCreate>
         }
     }
 }
+
