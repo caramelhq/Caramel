@@ -1,11 +1,61 @@
-import { container } from '@sapphire/framework';
-import { Guild, TextChannel } from 'discord.js';
+import { Guild, TextChannel, GuildMember, Message } from 'discord.js';
+import { resolveKey } from '@sapphire/plugin-i18next';
+import { container, Command } from '@sapphire/framework';
+import { getMessageLayout } from '../layouts/defaultLayout';
+
 import { prisma } from '../../database/db';
 import { CacheManager } from '../../database/CacheManager';
 import { getModLogLayout, getModDMLayout, type ModAction } from './layouts';
 
 
-// Mod utils ──────────────────
+
+// Moderation helpers ──────────────────
+
+/**
+ * Validates if the target can be moderated by the invoker
+ */
+export async function validateMod(target: Command.ChatInputCommandInteraction | Message, member: GuildMember): Promise<string | null> {
+    const invoker = (target instanceof Message) ? target.member : target.member as GuildMember;
+    if (!invoker) return 'errors:unexpected';
+
+    if (member.id === invoker.id) return 'errors:mod.self';
+    if (member.id === container.client.user?.id) return 'errors:mod.bot';
+    
+    // Higher role check
+    if (member.roles.highest.position >= invoker.roles.highest.position && invoker.guild.ownerId !== invoker.id) {
+        return 'errors:mod.hierarchy';
+    }
+
+    if (!member.manageable) return 'errors:mod.notManageable';
+
+    return null;
+}
+
+
+/**
+ * Ensures the moderation module is enabled and has a log channel
+ */
+export async function requireModConfig(target: Command.ChatInputCommandInteraction | Message): Promise<boolean> {
+    const guildId = target.guildId!;
+    const modConfig = await CacheManager.getModConfig(guildId);
+
+    if (!modConfig.modModule) {
+        const content = await resolveKey(target, 'errors:mod.moduleDisabled');
+        if (target instanceof Message) await target.reply({ ...getMessageLayout(content) });
+        else await (target as Command.ChatInputCommandInteraction).editReply({ ...getMessageLayout(content) });
+        return false;
+    }
+
+    if (!modConfig.modLogChannelId) {
+        const content = await resolveKey(target, 'errors:mod.noLogChannel');
+        if (target instanceof Message) await target.reply({ ...getMessageLayout(content) });
+        else await (target as Command.ChatInputCommandInteraction).editReply({ ...getMessageLayout(content) });
+        return false;
+    }
+
+    return true;
+}
+
 
 // Sends a DM to the sanctioned user ──────────
 
