@@ -41,6 +41,11 @@ export class CacheManager {
             pipeline.set(`mod:mute_threshold:${guildId}`, String(config.muteThreshold));
             pipeline.set(`mod:ban_threshold:${guildId}`, String(config.banThreshold));
 
+
+            // General ──────────
+
+            pipeline.set(`general:locale:${guildId}`, (config as any).locale);
+
             await pipeline.exec();
         } catch (error) {
             logger.error(`[CACHE_MANAGER] Failed to sync guild ${guildId}:`, error);
@@ -69,6 +74,13 @@ export class CacheManager {
             banThreshold:         banThreshold  ? parseInt(banThreshold)  : 5,
             mutedRoleId:          mutedRole ?? null,
         };
+    }
+
+
+    public static async getLocale(guildId: string) {
+        const { redis } = container;
+        const locale = await redis.get(`general:locale:${guildId}`);
+        return locale ?? 'en-US';
     }
 
 

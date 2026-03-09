@@ -38,6 +38,9 @@ model GuildConfig {
     modChannelCreatedByBot Boolean  @default(false) @map("mod_channel_created_by_bot")
     modRoleCreatedByBot    Boolean  @default(false) @map("mod_role_created_by_bot")
 
+    // General ──────────
+    locale String @default("en-US") @map("locale")
+
     createdAt DateTime @default(now()) @map("created_at")
     updatedAt DateTime @updatedAt @map("updated_at")
 

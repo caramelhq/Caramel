@@ -1,8 +1,9 @@
-import '@sapphire/plugin-logger/register';
+import { InternationalizationContext } from '@sapphire/plugin-i18next';
 import { SapphireClient, container, LogLevel } from '@sapphire/framework';
-import { GatewayIntentBits } from 'discord.js';
-import winston from 'winston';
+import { ActivityType, GatewayIntentBits } from 'discord.js';
+import pino from 'pino';
 import { join } from 'path';
+import { CacheManager } from '../database/CacheManager';
 
 
 // Caramel client ──────────────────
@@ -10,23 +11,28 @@ import { join } from 'path';
 export class CaramelClient extends SapphireClient {
     public constructor() {
 
-        // Winston logger setup ──────────
-        const winstonLogger = winston.createLogger({
-            level: 'info',
-            format: winston.format.combine(
-                winston.format.timestamp(),
-                winston.format.json()
-            ),
-            transports: [
-                new winston.transports.Console({
-                    format: winston.format.combine(
-                        winston.format.colorize(),
-                        winston.format.printf(({ level, message }) => `${level} ${message}`)
-                    )
-                }),
-                new winston.transports.File({ filename: 'logs/combined.log' }),
-                new winston.transports.File({ filename: 'logs/errors.log', level: 'error' })
-            ]
+        // Pino logger setup ──────────
+        const pinoLogger = pino({
+            level: 'trace',
+            transport: {
+                targets: [
+                    {
+                        target: 'pino-pretty',
+                        options: { colorize: true, ignore: 'pid,hostname' },
+                        level: 'info'
+                    },
+                    {
+                        target: 'pino/file',
+                        options: { destination: 'logs/combined.log', mkdir: true },
+                        level: 'info'
+                    },
+                    {
+                        target: 'pino/file',
+                        options: { destination: 'logs/errors.log', mkdir: true },
+                        level: 'error'
+                    }
+                ]
+            }
         });
 
         super({
@@ -38,9 +44,32 @@ export class CaramelClient extends SapphireClient {
                 GatewayIntentBits.GuildVoiceStates,
                 GatewayIntentBits.MessageContent,
             ],
-            defaultPrefix: process.env.PREFIX ?? 'p!',
-            fetchPrefix: () => process.env.PREFIX ?? 'p!',
+            presence: {
+                status: 'idle',
+                activities: [
+                    {
+                        name: '🍬 in development',
+                        type: ActivityType.Custom
+                    }
+                ]
+            },
+            defaultPrefix: process.env.PREFIX ?? 'c!',
+            fetchPrefix: () => process.env.PREFIX ?? 'c!',
+            loadMessageCommandListeners: true,
             baseUserDirectory: join(__dirname, '..'),
+            i18n: {
+                fetchLanguage: async (context: InternationalizationContext) => {
+                    if (!context.guild) return 'en-US';
+                    return await CacheManager.getLocale(context.guild.id);
+                },
+                defaultLanguageDirectory: join(process.cwd(), 'src', 'lib', 'i18n'),
+                i18next: {
+                    fallbackLng: 'en-US'
+                }
+            },
+            allowedMentions: {
+                repliedUser: false
+            },
             applicationCommands: {
                 developmentGuildIds: ['1195184839758975089'],
                 registries: {
@@ -56,13 +85,16 @@ export class CaramelClient extends SapphireClient {
                     info: (message: any) => {
                         if (typeof message === 'string' &&
                             (message.includes('ApplicationCommandRegistries') || message.includes('initialize'))) return;
-                        winstonLogger.info(message);
+                        pinoLogger.info(message);
                     },
-                    debug: (message: any) => winstonLogger.debug(message),
-                    error: (message: any) => winstonLogger.error(message),
-                    warn:  (message: any) => winstonLogger.warn(message),
-                    fatal: (message: any) => winstonLogger.error(`[FATAL] ${message}`),
-                    trace: (message: any) => winstonLogger.silly(message),
+                    debug: (message: any) => pinoLogger.debug(message),
+                    error: (...args: any[]) => {
+                        const formatted = args.map(arg => arg instanceof Error ? (arg.stack ?? arg.message) : arg).join(' ');
+                        pinoLogger.error(formatted);
+                    },
+                    warn:  (...args: any[]) => pinoLogger.warn(args.join(' ')),
+                    fatal: (message: any) => pinoLogger.fatal(`[FATAL] ${message}`),
+                    trace: (message: any) => pinoLogger.trace(message),
                     run:   () => {},
                     level: LogLevel.Info
                 } as any

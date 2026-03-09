@@ -1,4 +1,7 @@
 import 'dotenv/config';
+import '@sapphire/plugin-logger/register';
+import '@sapphire/plugin-i18next/register';
+import '@sapphire/plugin-subcommands/register';
 import './database/Redis';
 import { connectDB, prisma } from './database/db';
 import { CaramelClient } from './structures/CaramelClient';

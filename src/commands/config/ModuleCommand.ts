@@ -3,7 +3,11 @@ import { PermissionFlagsBits, ComponentType, ChannelType, PermissionsBitField, M
 import { prisma } from '../../database/db';
 import { ModuleValidators } from '../../validators/ModuleValidator';
 import { CacheManager } from '../../database/CacheManager';
-import { getModuleLayout, getResetLayout, getSuccessLayout, getCancelledLayout, getStatusUpdateLayout, getTimeoutLayout, getModuleSetupConfirmLayout, getModuleSetupSummaryLayout, getAlreadyEnabledLayout } from '../../lib/utils/layouts';
+import { getModuleLayout, getResetLayout, getCancelledLayout, getStatusUpdateLayout, getTimeoutLayout, getModuleSetupConfirmLayout, getModuleSetupSummaryLayout } from '../../lib/layouts/modCommandLayouts';
+import { getMessageLayout } from '../../lib/layouts/defaultLayout';
+import { resolveKey } from '@sapphire/plugin-i18next';
+import { Args, Command } from '@sapphire/framework';
+import { Message } from 'discord.js';
 import { Emojis } from '../../lib/constants/emojis';
 import type { GuildConfig } from '@prisma/client';
 
@@ -201,11 +205,15 @@ async function runSetupFlow(
     const confirmId = `${moduleName}_confirm_${modalSubmit.id}`;
     const cancelId  = `${moduleName}_cancel_${modalSubmit.id}`;
 
+    const title       = getDisplayName(moduleName);
+    const description = `Caramel will perform the following actions to set up the **${title}** module:`;
+    const actionsText = previewActions.map(a => `${Emojis.static_setting_emoji} ${a}`).join('\n');
     const response = await modalSubmit.editReply({
-        ...getModuleSetupConfirmLayout(confirmId, cancelId, {
-            moduleName: getDisplayName(moduleName),
-            actions: previewActions
-        })
+        ...getModuleSetupConfirmLayout(
+            confirmId, cancelId,
+            title, description, actionsText,
+            'Confirm Setup', 'Cancel'
+        )
     });
 
     const collector = response.createMessageComponentCollector({
@@ -216,7 +224,7 @@ async function runSetupFlow(
 
     collector.on('collect', async (i) => {
         if (i.customId === cancelId) {
-            return i.update({ ...getCancelledLayout() }).then(() => collector.stop('cancelled'));
+            return i.update({ ...getCancelledLayout('❌ Setup cancelled.') }).then(() => collector.stop('cancelled'));
         }
 
         if (i.customId === confirmId) {
@@ -233,10 +241,16 @@ async function runSetupFlow(
                 });
                 await CacheManager.syncGuild(guildId!, updated);
 
-                return i.update({ ...getModuleSetupSummaryLayout(getDisplayName(moduleName), summaryActions) })
-                    .then(() => collector.stop('success'));
+                const summaryText = summaryActions.map(a => `${Emojis.static_setting_emoji} ${a}`).join('\n');
+                return i.update({
+                    ...getModuleSetupSummaryLayout(
+                        getDisplayName(moduleName),
+                        summaryText,
+                        'Setup complete. You can now enable the module with `/module enable`.'
+                    )
+                }).then(() => collector.stop('success'));
             } catch (error) {
-                return i.update({ content: '`🔴` An error occurred during setup.' });
+                return i.update({ ...getMessageLayout('`🔴` An error occurred during setup.') });
             }
         }
     });
@@ -245,7 +259,7 @@ async function runSetupFlow(
 
     collector.on('end', async (_, reason) => {
         if (reason !== 'success' && reason !== 'cancelled') {
-            await response.edit({ ...getTimeoutLayout() });
+            await response.edit({ ...getMessageLayout('⏱️ Setup timed out. Please try again.') });
         }
     });
 }
@@ -485,14 +499,14 @@ export class ModuleCommand extends Subcommand {
             const config    = await prisma.guildConfig.findUnique({ where: { guildId: guildId! } });
             const validator = ModuleValidators[moduleValue];
 
-            if (!validator) return interaction.editReply({ content: `\`❌\` Module **${displayName}** not supported.` });
-            if ((config as any)?.[`${moduleValue}Module`] === true) return interaction.editReply({ ...getAlreadyEnabledLayout(displayName) });
+            if (!validator) return interaction.editReply({ ...getMessageLayout(`\`❌\` Module **${displayName}** not supported.`) });
+            if ((config as any)?.[`${moduleValue}Module`] === true) return interaction.editReply({ ...getMessageLayout(`\`❌\` Module **${displayName}** is already enabled.`) });
 
             const { isValid, missing } = await validator(config, guild);
 
             if (!isValid) {
                 return interaction.editReply({
-                    content: `\`❌\` **${displayName}** module cannot be enabled:\n${missing?.map(m => `${Emojis.static_setting_emoji} ${m}`).join('\n') ?? 'Run `/module setup` first.'}`
+                    ...getMessageLayout(`\`❌\` **${displayName}** module cannot be enabled:\n${missing?.map(m => `${Emojis.static_setting_emoji} ${m}`).join('\n') ?? 'Run \`/module setup\` first.'}`)
                 });
             }
 
@@ -502,10 +516,11 @@ export class ModuleCommand extends Subcommand {
             });
             await CacheManager.syncGuild(guildId!, updated);
 
-            return interaction.editReply(getStatusUpdateLayout(displayName, true));
+            const state = `Module **${displayName}** enabled.`;
+            return interaction.editReply(getStatusUpdateLayout(displayName, state, true));
         } catch (error) {
             this.container.logger.error(`[ENABLE ERROR]`, error);
-            return interaction.editReply({ content: '`🔴` Error enabling module.' });
+            return interaction.editReply({ ...getMessageLayout('`🔴` Error enabling module.') });
         }
     }
 
@@ -526,10 +541,11 @@ export class ModuleCommand extends Subcommand {
             });
             await CacheManager.syncGuild(guildId!, updated);
 
-            return interaction.editReply(getStatusUpdateLayout(displayName, false));
+            const state = `Module **${displayName}** disabled.`;
+            return interaction.editReply(getStatusUpdateLayout(displayName, state, false));
         } catch (error) {
             this.container.logger.error(`[DISABLE ERROR]`, error);
-            return interaction.editReply({ content: '`🔴` Error disabling module.' });
+            return interaction.editReply({ ...getMessageLayout('`🔴` Error disabling module.') });
         }
     }
 
@@ -544,7 +560,16 @@ export class ModuleCommand extends Subcommand {
 
         const deletions = await getResetDeletions(moduleName, guildId!);
 
-        await interaction.reply({ ...getResetLayout(confirmId, cancelId, deletions), ephemeral: false });
+        await interaction.reply({
+            ...getResetLayout(
+                confirmId, cancelId,
+                `Reset ${getDisplayName(moduleName)}`,
+                `This will wipe all **${getDisplayName(moduleName)}** module configuration from this server.`,
+                Array.isArray(deletions) ? deletions.join('\n') : deletions,
+                'Yes, reset', 'Cancel'
+            ),
+            ephemeral: false
+        });
 
         const response  = await interaction.fetchReply();
         const collector = response.createMessageComponentCollector({
@@ -557,19 +582,19 @@ export class ModuleCommand extends Subcommand {
             if (i.customId === confirmId) {
                 try {
                     await RESET_MAP[moduleName]?.(guildId!, this.container.client);
-                    return i.update({ ...getSuccessLayout(moduleName) }).then(() => collector.stop('success'));
+                    return i.update({ ...getMessageLayout(`✅ Module **${getDisplayName(moduleName)}** has been reset.`) }).then(() => collector.stop('success'));
                 } catch (error) {
-                    return i.reply({ content: '`🔴` Error resetting.', ephemeral: false });
+                    return i.reply({ ...getMessageLayout('`🔴` Error resetting.'), ephemeral: false });
                 }
             }
-            if (i.customId === cancelId) return i.update({ ...getCancelledLayout() }).then(() => collector.stop('cancelled'));
+            if (i.customId === cancelId) return i.update({ ...getCancelledLayout('❌ Reset cancelled.') }).then(() => collector.stop('cancelled'));
         });
 
         // Timeout if no interaction within the time limit ──────────
 
         collector.on('end', async (_, reason) => {
             if (reason !== 'success' && reason !== 'cancelled') {
-                await response.edit({ ...getTimeoutLayout() });
+                await response.edit({ ...getMessageLayout('⏱️ Timed out. No response received.') });
             }
         });
     }
