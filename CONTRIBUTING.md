@@ -35,9 +35,9 @@ Thank you for your interest in contributing. This document covers everything you
 ## Getting Started
 
 ```bash
-git clone https://github.com/youruser/caramel
-cd caramel
-npm install
+git clone https://github.com/CaramelHQ/Caramel.git
+cd Caramel
+pnpm install
 cp .env.example .env   # fill in your values
 ```
 
@@ -56,7 +56,7 @@ npx prisma migrate deploy
 Start the bot in development mode:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ---
@@ -311,7 +311,7 @@ To add a new module:
 
 1. Fork the repository and create a branch from `main`.
 2. Keep each pull request focused on a single feature or fix.
-3. Ensure `npm run build` completes without TypeScript errors before opening a PR.
+3. Ensure `pnpm run build` completes without TypeScript errors before opening a PR.
 4. Write clear commit messages following the convention above.
 5. Describe what your PR does and why in the pull request description.
 
