@@ -68,6 +68,7 @@ src/                    Bot source (TypeScript, CommonJS)
 └── index.ts            Bootstrap entry point
 
 web/                    Next.js 16 App Router dashboard
+├── scripts/            Postinstall helpers (Prisma client copy)
 ├── src/app/            Route handlers + pages (dashboard, docs, API)
 ├── src/components/ui/  shadcn/ui components
 ├── src/lib/            Auth, Prisma, Redis, Discord API helpers
@@ -97,8 +98,8 @@ docker-compose.yml      Local PostgreSQL 15 + Redis
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/youruser/caramel.git
-cd caramel
+git clone https://github.com/CaramelHQ/Caramel.git
+cd Caramel
 ```
 
 ### 2. Start infrastructure
@@ -181,8 +182,16 @@ pnpm install
 cd ..
 ```
 
-> The web workspace's `postinstall` script automatically runs `prisma generate`
-> and copies the generated client to the web's `node_modules`.
+> **How Prisma works in this monorepo:** The Prisma schema lives at `prisma/schema.prisma`
+> in the root. Both the bot and the web dashboard share the same `@prisma/client`.
+>
+> With pnpm, `prisma generate` places the generated `.prisma/client` inside pnpm's
+> content-addressable store — not in `web/node_modules/.prisma/client` where Next.js
+> expects it. The web workspace's `postinstall` script handles this automatically by
+> running `prisma generate` and then executing `scripts/copy-prisma-client.js`, which
+> locates the generated client in the pnpm store and copies it to `web/node_modules/.prisma/client`.
+>
+> If you see `Cannot find module '.prisma/client/default'`, see [Troubleshooting](#troubleshooting).
 
 ### 5. Set up the database
 
@@ -294,28 +303,50 @@ Caramel uses a module system. Each feature must be configured and enabled per gu
 
 ### `Cannot find module '.prisma/client/default'` (web)
 
-This happens when the web workspace can't find the generated Prisma client due to pnpm's
-strict module isolation. Fix it by regenerating:
+This happens when the generated Prisma client is missing from `web/node_modules/.prisma/client`.
+With pnpm's strict module isolation, `prisma generate` places the output inside pnpm's
+content-addressable store, not where Next.js (Turbopack) can resolve it.
+
+**Fix — run the postinstall script manually:**
 
 ```bash
-# From root
+cd web
+pnpm run postinstall
+```
+
+This runs `prisma generate` and the `scripts/copy-prisma-client.js` helper that copies
+the generated client to the correct location.
+
+**Alternative — regenerate and copy manually:**
+
+```bash
+# From root — generate for the bot
 npx prisma generate
 
-# From web/
+# From web/ — generate and copy for the dashboard
 cd web
 npx prisma generate --schema=../prisma/schema.prisma
+node scripts/copy-prisma-client.js
 ```
 
-### Database connection refused
+### Database connection refused (`ECONNREFUSED`)
 
-Verify Docker containers are running and your `.env` ports match `docker-compose.yml`:
+This usually means the port in your `DATABASE_URL` doesn't match what Docker is exposing.
+
+docker-compose maps PostgreSQL to **port 5433** and Redis to **port 6380** on the host.
+A common mistake is using the default ports (5432 / 6379) instead.
 
 ```bash
+# Verify containers are running
 docker compose ps
 
-# DATABASE_URL must use port 5433 (not 5432)
-# REDIS_URL must use port 6380 (not 6379)
+# Both .env files must use the correct ports:
+#   DATABASE_URL=postgresql://admin:secure_password@localhost:5433/Caramellabs_db_dev
+#   REDIS_URL=redis://localhost:6380
 ```
+
+**Important:** Make sure `web/.env.local` uses the **same ports** as the root `.env`.
+The web dashboard connects to the same PostgreSQL and Redis instances as the bot.
 
 ### `Cross origin request detected` warning (Next.js dev)
 
