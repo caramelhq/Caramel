@@ -18,7 +18,7 @@ The web portal for [Caramel](https://github.com/anomalyco/caramel), a modular Di
 ## Prerequisites
 
 - Node.js v18+
-- npm v9+ (uses npm workspaces — run commands from the **repo root**)
+- pnpm v10+ (uses pnpm workspaces — run commands from the **repo root**)
 - PostgreSQL (port 5433 locally via docker-compose)
 - A Discord application with OAuth2 configured
 
@@ -28,10 +28,10 @@ From the **repo root**:
 
 ```bash
 # Install all dependencies (bot + web)
-npm install
+pnpm install
 
 # Start the Next.js dev server
-npm run web:dev
+pnpm run web:dev
 ```
 
 The portal will be available at **http://localhost:3000**.
@@ -58,14 +58,14 @@ DISCORD_BOT_TOKEN=         # Bot token, used to fetch guild info via the Discord
 
 ## Scripts
 
-All scripts run from the **repo root** via npm workspaces:
+All scripts run from the **repo root** via pnpm workspaces:
 
-| Command                        | Description                          |
-| ------------------------------ | ------------------------------------ |
-| `npm run web:dev`              | Start Next.js dev server (Turbopack) |
-| `npm run web:build`            | Production build                     |
-| `npm run web:start`            | Serve production build               |
-| `npm run lint --workspace=web` | Run ESLint (`next lint`)             |
+| Command                         | Description                          |
+| ------------------------------- | ------------------------------------ |
+| `pnpm run web:dev`              | Start Next.js dev server (Turbopack) |
+| `pnpm run web:build`            | Production build                     |
+| `pnpm run web:start`            | Serve production build               |
+| `pnpm run lint --filter=web`    | Run ESLint (`next lint`)             |
 
 ## Tech Stack
 
@@ -85,6 +85,7 @@ All scripts run from the **repo root** via npm workspaces:
 web/
 ├── content/docs/          # MDX documentation source files
 ├── public/                # Static assets (logo, images)
+├── scripts/               # Postinstall helpers (Prisma client copy for pnpm)
 ├── src/
 │   ├── app/               # Next.js App Router pages and API routes
 │   │   ├── api/           # REST API routes (guilds, auth, search)
@@ -108,4 +109,5 @@ web/
 - **No emojis** — Lucide React icons are used throughout.
 - **Shared database** — the web portal and bot use the same PostgreSQL instance. Never add web-only migrations that break the bot schema.
 - **Web/bot boundary** — do not import from the bot's `src/` into `web/src/` or vice versa.
+- **Prisma + pnpm** — the `postinstall` script runs `prisma generate` and then `scripts/copy-prisma-client.js` to copy the generated client from pnpm's store into `web/node_modules/.prisma/client`. If you see `Cannot find module '.prisma/client/default'`, run `pnpm run postinstall` from the `web/` directory.
 - Brand accent color: `#d77655` (Caramel orange).

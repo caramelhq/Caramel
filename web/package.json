@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate --schema=../prisma/schema.prisma && node -e \"require('fs').cpSync(require('path').resolve('..','node_modules','.prisma'),require('path').resolve('node_modules','.prisma'),{recursive:true,force:true})\""
+    "postinstall": "prisma generate --schema=../prisma/schema.prisma && node scripts/copy-prisma-client.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
