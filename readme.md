@@ -39,7 +39,7 @@ Includes a **Next.js 16 web dashboard** for guild configuration, moderation logs
 | Database  | PostgreSQL via Prisma       |
 | Cache     | Redis (ioredis)             |
 | Queue     | BullMQ                      |
-| Logger    | Winston                     |
+| Logger    | Pino                        |
 | Web       | Next.js 16, Tailwind CSS 4  |
 | Auth      | NextAuth v5 (Discord OAuth) |
 | UI        | shadcn/ui (Radix)           |
