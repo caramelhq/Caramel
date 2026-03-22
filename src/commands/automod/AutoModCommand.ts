@@ -113,8 +113,8 @@ export class AutoModCommand extends Subcommand {
 
     // Add/Delete Rule (Simplified for brevity as they are already working) ──────────
 
-    private async handleRuleAdd(interaction: Subcommand.ChatInputCommandInteraction) { /* ... same as before ... */ return interaction.reply('Feature not modified in this pass.'); }
-    private async handleRuleDelete(interaction: Subcommand.ChatInputCommandInteraction) { /* ... same as before ... */ return interaction.reply('Feature not modified in this pass.'); }
+    private async handleRuleAdd(interaction: Subcommand.ChatInputCommandInteraction) { return interaction.reply('Feature not modified in this pass.'); }
+    private async handleRuleDelete(interaction: Subcommand.ChatInputCommandInteraction) { return interaction.reply('Feature not modified in this pass.'); }
 
 
     // Import Rules (Presets into Discord API) ──────────

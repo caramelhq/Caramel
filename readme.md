@@ -271,31 +271,82 @@ Caramel uses a module system. Each feature must be configured and enabled per gu
 
 ## Commands
 
-### Moderation — `/mod` or `c!mod`
+### Server — `/`
 
 | Command     | Description                        |
 | ----------- | ---------------------------------- |
-| `warn`      | Warn a member                      |
-| `mute`      | Mute with role (supports duration) |
-| `timeout`   | Discord native timeout             |
-| `unmute`    | Remove timeout or mute             |
-| `ban`       | Ban a member                       |
-| `softban`   | Ban + unban to clear messages      |
-| `kick`      | Kick a member                      |
-| `silentban` | Add / remove / list silent bans    |
-| `slowmode`  | Set channel slowmode               |
-| `lockdown`  | Toggle channel lockdown            |
-| `history`   | View sanction history              |
+| `language`  | Change the server's language       |
+| `prefix`    | Change the server's prefix         |
+
+### Moderation — `/mod` or `c!mod`
+
+| Command      | Description                        |
+| ------------ | ---------------------------------- |
+| `warn`       | Warn a member                      |
+| `mute`       | Mute with role                     |
+| `timeout`    | Discord native timeout             |
+| `unmute`     | Remove timeout or mute             |
+| `ban`        | Ban a member                       |
+| `unban`      | Unban a member                     |
+| `softban`    | Ban + unban to clear messages      |
+| `kick`       | Kick a member                      |
+| `silentban`  | Add / remove / list silent bans    |
+| `slowmode`   | Set channel slowmode               |
+| `lockdown`   | Toggle channel lockdown            |
+| `history`    | View sanction history              |
+| `user`       | View user information              |
+| `case`       | View a specific case (#)           |
+| `remove-case`| Remove a specific case (#)         |
+
+### Thresholds — `/threshold` or `c!threshold`
+
+| Command      | Description                            |
+| ------------ | -------------------------------------- |
+| `add`        | Add a threshold rule                   |
+| `list`       | Show all the threshold rules           |
+| `remove`     | Remove a threshold rule                |
+| `mode`       | Change the behaviour of the thresholds |
 
 ### Config — `/module`
 
-| Command    | Description                      |
-| ---------- | -------------------------------- |
-| `setup`    | Interactive module setup (modal) |
-| `settings` | View current configuration       |
-| `enable`   | Enable a module                  |
-| `disable`  | Disable a module                 |
-| `reset`    | Factory reset a module           |
+| Command     | Description                      |
+| ----------- | -------------------------------- |
+| `setup`     | Interactive module setup (modal) |
+| `settings`  | View current configuration       |
+| `enable`    | Enable a module                  |
+| `disable`   | Disable a module                 |
+| `reset`     | Factory reset a module           |
+
+### Fun — `/` or `c!`
+
+| Command     | Description                      |
+| ----------- | -------------------------------- |
+| `banana`    | Check your banana size           |
+| `roll`      | Throw a die                      |
+
+### Automod — `/automod rule` or `c!automod rule`
+
+| Command     | Description                      |
+| ----------- | -------------------------------- |
+| `add`       | Add a new rule                   |
+| `edit`      | Edit an existing rule            |
+| `delete`    | Delete a rule                    |
+| `list`      | Show your active rules           |
+| `import`    | Import presets of rules          |
+
+### Music  — `/` or `c!`
+
+| Command     | Description                      |
+| ----------- | -------------------------------- |
+| `play`      | Play a song, any                 |
+| `skip`      | Jump to the next song            |
+| `queue`     | Show the current song queue      |
+| `loop`      | Toggle loop mode for tracks      |
+| `shuffle`   | Randomize the music queue        |
+| `stop`      | Stop the music                   |
+| `pause`     | Pause or resume a track          |
+| `lyrics`    | Show the current track lyrics    |
+
 
 ---
 
