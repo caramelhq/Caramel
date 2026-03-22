@@ -2,13 +2,18 @@ import { Command, Args } from '@sapphire/framework';
 import { ApplyOptions } from '@sapphire/decorators';
 import { PermissionFlagsBits, GuildMember, Message } from 'discord.js';
 import { resolveKey } from '@sapphire/plugin-i18next';
-import { requireModConfig, validateMod, sendModDM, sendModLog } from '../../lib/utils/ModUtils';
-import { prisma } from '../../database/db';
+import { requireModConfig, validateMod, sendModDM, sendModLog, checkThresholds } from '../../lib/utils/ModUtils';
 import { Emojis } from '../../lib/constants/emojis';
-import { getMessageLayout } from '../../lib/layouts/defaultLayout';
-import { getStatusUpdateLayout, getCancelledLayout, getTimeoutLayout } from '../../lib/layouts/modCommandLayouts';
+import { getStaffConfirmationLayout } from '../../lib/layouts/modCommandLayouts';
+import { CaramelUserError } from '../../lib/structures/Errors';
 
+@ApplyOptions<Command.Options>({
+    name: 'kick',
+    description: 'Kick a member',
+})
 export class KickCommand extends Command {
+    public readonly usage = 'modcommands:mod.usage.kick';
+
     public override registerApplicationCommands(registry: Command.Registry) {
         registry.registerChatInputCommand((builder) =>
             builder
@@ -25,44 +30,51 @@ export class KickCommand extends Command {
         const reason = interaction.options.getString('reason') ?? null;
         await interaction.deferReply({ ephemeral: false });
 
-        if (!target) return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'errors:memberNotFound')) });
-        const err = await validateMod(interaction, target);
-        if (err) return interaction.editReply({ ...getMessageLayout(err) });
-        if (!target.kickable) return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'modcommands:mod.kick.notKickable')) });
-        if (!await requireModConfig(interaction)) return;
+        if (!target) throw new CaramelUserError('errors:memberNotFound');
+        
+        await validateMod(interaction, target);
+        if (!target.kickable) throw new CaramelUserError('modcommands:mod.kick.notKickable');
+        await requireModConfig(interaction.guildId!);
 
-        try {
-            await sendModDM({ userId: target.id, action: 'kick', guildName: interaction.guild!.name, reason });
-            await target.kick(reason ?? undefined);
-            await sendModLog({ guildId: interaction.guildId!, action: 'kick', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, reason });
+        await sendModDM({ userId: target.id, moderatorId: interaction.user.id, action: 'kick', guild: interaction.guild!, reason });
+        await target.kick(reason ?? undefined);
+        const caseNumber = await sendModLog({ guildId: interaction.guildId!, action: 'kick', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, guild: interaction.guild!, reason });
+        await checkThresholds({ guildId: interaction.guildId!, userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, guild: interaction.guild!, actionTriggered: 'kick' });
 
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'modcommands:mod.kick.success', { emoji: Emojis.enabled_setting_emoji, user: target.user.tag })) });
-        } catch (error) {
-            this.container.logger.error(`[MOD KICK]`, error);
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'errors:unexpected')) });
-        }
+        const successMsg = await resolveKey(interaction, 'modcommands:sanctions.confirmations.kick', { 
+            emoji: Emojis.kick_emoji, 
+            user: target.toString(), 
+            userId: target.id 
+        });
+
+        return interaction.editReply(getStaffConfirmationLayout({
+            content: successMsg,
+            caseId: caseNumber ?? 0
+        }));
     }
 
     public async messageRun(message: Message, args: Args) {
-        const target = await args.pick('member').catch(() => null) as GuildMember | null;
+        const target = await args.pick('member');
         const reason = await args.rest('string').catch(() => null);
 
-        if (!target) return message.reply({ ...getMessageLayout(await resolveKey(message, 'errors:memberNotFound')) });
-        const err = await validateMod(message, target);
-        if (err) return message.reply({ ...getMessageLayout(err) });
-        if (!target.kickable) return message.reply({ ...getMessageLayout(await resolveKey(message, 'modcommands:mod.kick.notKickable')) });
+        await validateMod(message, target);
+        if (!target.kickable) throw new CaramelUserError('modcommands:mod.kick.notKickable');
+        await requireModConfig(message.guildId!);
 
-        if (!await requireModConfig(message)) return;
+        await sendModDM({ userId: target.id, moderatorId: message.author.id, action: 'kick', guild: message.guild!, reason });
+        await target.kick(reason ?? undefined);
+        const caseNumber = await sendModLog({ guildId: message.guildId!, action: 'kick', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, guild: message.guild!, reason });
+        await checkThresholds({ guildId: message.guildId!, userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, guild: message.guild!, actionTriggered: 'kick' });
 
-        try {
-            await sendModDM({ userId: target.id, action: 'kick', guildName: message.guild!.name, reason });
-            await target.kick(reason ?? undefined);
-            await sendModLog({ guildId: message.guildId!, action: 'kick', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, reason });
+        const successMsg = await resolveKey(message, 'modcommands:sanctions.confirmations.kick', { 
+            emoji: Emojis.kick_emoji, 
+            user: target.toString(), 
+            userId: target.id 
+        });
 
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'modcommands:mod.kick.success', { emoji: Emojis.enabled_setting_emoji, user: target.user.tag })) });
-        } catch (error) {
-            this.container.logger.error(`[MOD KICK]`, error);
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'errors:unexpected')) });
-        }
+        return message.reply(getStaffConfirmationLayout({
+            content: successMsg,
+            caseId: caseNumber ?? 0
+        }));
     }
 }

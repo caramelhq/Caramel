@@ -6,9 +6,13 @@ import { requireModConfig, validateMod, sendModLog } from '../../lib/utils/ModUt
 import { prisma } from '../../database/db';
 import { CacheManager } from '../../database/CacheManager';
 import { Emojis } from '../../lib/constants/emojis';
-import { getMessageLayout } from '../../lib/layouts/defaultLayout';
-import { getStatusUpdateLayout, getCancelledLayout, getTimeoutLayout } from '../../lib/layouts/modCommandLayouts';
+import { getStaffConfirmationLayout } from '../../lib/layouts/modCommandLayouts';
+import { CaramelUserError } from '../../lib/structures/Errors';
 
+@ApplyOptions<Command.Options>({
+    name: 'unmute',
+    description: 'Unmute a member',
+})
 export class UnmuteCommand extends Command {
     public override registerApplicationCommands(registry: Command.Registry) {
         registry.registerChatInputCommand((builder) =>
@@ -22,66 +26,61 @@ export class UnmuteCommand extends Command {
 
     public async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
         const target = interaction.options.getMember('user') as GuildMember | null;
+        
         await interaction.deferReply({ ephemeral: false });
 
-        if (!target) return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'errors:memberNotFound')) });
+        if (!target) throw new CaramelUserError('errors:memberNotFound');
         
-        const isAllowed = await requireModConfig(interaction);
-        if (!isAllowed) return;
+        await validateMod(interaction, target);
+        await requireModConfig(interaction.guildId!);
 
         const { mutedRoleId } = await CacheManager.getModConfig(interaction.guildId!);
-        if (!mutedRoleId) return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'modcommands:mod.unmute.roleMissing')) });
+        if (!mutedRoleId) throw new CaramelUserError('modcommands:mod.unmute.roleMissing');
 
-        if (!target.roles.cache.has(mutedRoleId)) {
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'modcommands:mod.mute.notMuted')) });
-        }
+        if (!target.roles.cache.has(mutedRoleId)) throw new CaramelUserError('modcommands:mod.mute.notMuted');
 
-        const executor = await interaction.guild!.members.fetch(interaction.user.id);
-        if (target.roles.highest.position >= executor.roles.highest.position) {
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'modcommands:mod.mute.unmuteHigherRole')) });
-        }
+        const auditReason = await resolveKey(interaction, 'modcommands:mod.mute.auditReason');
+        await target.roles.remove(mutedRoleId, auditReason);
+        await prisma.activeMute.deleteMany({ where: { guildId: interaction.guildId!, userId: target.id } });
+        const caseNumber = await sendModLog({ guildId: interaction.guildId!, action: 'unmute', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, guild: interaction.guild!, reason: null });
 
-        try {
-            await target.roles.remove(mutedRoleId, 'Unmuted');
-            await prisma.activeMute.deleteMany({ where: { guildId: interaction.guildId!, userId: target.id } });
-            await sendModLog({ guildId: interaction.guildId!, action: 'unmute', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, reason: null });
+        const successMsg = await resolveKey(interaction, 'modcommands:sanctions.confirmations.unmute', { 
+            emoji: Emojis.unmute_emoji, 
+            user: target.toString(),
+            userId: target.id 
+        });
 
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'modcommands:mod.mute.unmuteSuccess', { emoji: Emojis.enabled_setting_emoji, user: target.user.tag })) });
-        } catch (error) {
-            this.container.logger.error(`[MOD UNMUTE]`, error);
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'errors:unexpected')) });
-        }
+        return interaction.editReply(getStaffConfirmationLayout({
+            content: successMsg,
+            caseId: caseNumber ?? 0
+        }));
     }
 
     public async messageRun(message: Message, args: Args) {
-        const target = await args.pick('member').catch(() => null) as GuildMember | null;
+        const target = await args.pick('member').catch(() => { throw new CaramelUserError('errors:memberNotFound'); });
 
-        if (!target) return message.reply({ ...getMessageLayout(await resolveKey(message, 'errors:memberNotFound')) });
-
-        const isAllowed = await requireModConfig(message);
-        if (!isAllowed) return;
+        await validateMod(message, target);
+        await requireModConfig(message.guildId!);
 
         const { mutedRoleId } = await CacheManager.getModConfig(message.guildId!);
-        if (!mutedRoleId) return message.reply({ ...getMessageLayout(await resolveKey(message, 'modcommands:mod.unmute.roleMissing')) });
+        if (!mutedRoleId) throw new CaramelUserError('modcommands:mod.unmute.roleMissing');
 
-        if (!target.roles.cache.has(mutedRoleId)) {
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'modcommands:mod.mute.notMuted')) });
-        }
+        if (!target.roles.cache.has(mutedRoleId)) throw new CaramelUserError('modcommands:mod.mute.notMuted');
 
-        const executor = message.member!;
-        if (target.roles.highest.position >= executor.roles.highest.position) {
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'modcommands:mod.mute.unmuteHigherRole')) });
-        }
+        const auditReason = await resolveKey(message, 'modcommands:mod.mute.auditReason');
+        await target.roles.remove(mutedRoleId, auditReason);
+        await prisma.activeMute.deleteMany({ where: { guildId: message.guildId!, userId: target.id } });
+        const caseNumber = await sendModLog({ guildId: message.guildId!, action: 'unmute', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, guild: message.guild!, reason: null });
 
-        try {
-            await target.roles.remove(mutedRoleId, 'Unmuted');
-            await prisma.activeMute.deleteMany({ where: { guildId: message.guildId!, userId: target.id } });
-            await sendModLog({ guildId: message.guildId!, action: 'unmute', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, reason: null });
+        const successMsg = await resolveKey(message, 'modcommands:sanctions.confirmations.unmute', { 
+            emoji: Emojis.unmute_emoji, 
+            user: target.toString(),
+            userId: target.id 
+        });
 
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'modcommands:mod.mute.unmuteSuccess', { emoji: Emojis.enabled_setting_emoji, user: target.user.tag })) });
-        } catch (error) {
-            this.container.logger.error(`[MOD UNMUTE]`, error);
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'errors:unexpected')) });
-        }
+        return message.reply(getStaffConfirmationLayout({
+            content: successMsg,
+            caseId: caseNumber ?? 0
+        }));
     }
 }

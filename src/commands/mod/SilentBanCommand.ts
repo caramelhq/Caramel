@@ -1,14 +1,14 @@
 import { Subcommand } from '@sapphire/plugin-subcommands';
 import { ApplyOptions } from '@sapphire/decorators';
 import { PermissionFlagsBits } from 'discord.js';
+import { resolveKey } from '@sapphire/plugin-i18next';
 import { addSilentBan, removeSilentBan, listSilentBans } from '../../services/SilentBanService';
-import { getSilentBanLayout } from '../../lib/utils/layouts';
+import { getSilentBanLayout } from '../../lib/layouts/modCommandLayouts';
 import { Emojis } from '../../lib/constants/emojis';
+import { CaramelUserError } from '../../lib/structures/Errors';
 
 
 // Constants ──────────────────
-
-// Duration options for silentban ──────────
 
 const DURATION_MAP: Record<string, number> = {
     '30m': 30 * 60 * 1000,
@@ -79,18 +79,14 @@ export class SilentBanCommand extends Subcommand {
         const duration = interaction.options.getString('duration');
         const reason   = interaction.options.getString('reason')?.slice(0, 500) ?? null;
 
-        if (target.id === interaction.user.id) return interaction.editReply("`❌` You can't silent ban yourself.");
-        if (target.bot) return interaction.editReply("`❌` You can't silent ban bots.");
+        if (target.id === interaction.user.id) throw new CaramelUserError('modcommands:mod.silentban.self');
+        if (target.bot) throw new CaramelUserError('modcommands:mod.silentban.bot');
 
         const durationMs = duration ? DURATION_MAP[duration] : null;
 
-        try {
-            await addSilentBan(interaction.guildId!, target.id, interaction.user.id, reason, durationMs);
-            return interaction.editReply(getSilentBanLayout('add', { userTag: target.username, duration: duration ?? 'Permanent', reason }));
-        } catch (error) {
-            this.container.logger.error(error);
-            return interaction.editReply('`❌` Error applying the silent ban.');
-        }
+        const ban = await addSilentBan(interaction.guildId!, target.id, interaction.user.id, reason, durationMs);
+        const permanentLabel = await resolveKey(interaction, 'modcommands:mod.mute.permanent');
+        return interaction.editReply(getSilentBanLayout('add', { userTag: target.username, duration: duration ?? permanentLabel, reason, caseNumber: ban.caseNumber }));
     }
 
 
@@ -100,13 +96,8 @@ export class SilentBanCommand extends Subcommand {
         await interaction.deferReply({ ephemeral: false });
         const target = interaction.options.getUser('user', true);
 
-        try {
-            await removeSilentBan(interaction.guildId!, target.id);
-            return interaction.editReply(getSilentBanLayout('remove', { userTag: target.username }));
-        } catch (error) {
-            this.container.logger.error(error);
-            return interaction.editReply('`❌` Error removing the silent ban.');
-        }
+        await removeSilentBan(interaction.guildId!, target.id);
+        return interaction.editReply(getSilentBanLayout('remove', { userTag: target.username }));
     }
 
 
@@ -115,26 +106,22 @@ export class SilentBanCommand extends Subcommand {
     public async chatInputList(interaction: Subcommand.ChatInputCommandInteraction) {
         await interaction.deferReply({ ephemeral: false });
 
-        try {
-            const bans = await listSilentBans(interaction.guildId!);
-            if (bans.length === 0) return interaction.editReply('`📋` No active silent bans.');
+        const bans = await listSilentBans(interaction.guildId!);
+        if (bans.length === 0) throw new CaramelUserError('modcommands:mod.silentban.noBans');
 
-            const listText = bans.map(ban =>
-                `${Emojis.bullet_emoji} <@${ban.userId}> › expires ${this.formatExpiry(ban.expiresAt)}`
-            ).join('\n');
+        const listText = bans.map(ban =>
+            `${Emojis.bullet_emoji} <@${ban.userId}> › expires ${this.formatExpiry(ban.expiresAt, interaction)}`
+        ).join('\n');
 
-            return interaction.editReply(getSilentBanLayout('list', { count: bans.length, listText }));
-        } catch (error) {
-            this.container.logger.error(error);
-            return interaction.editReply('`❌` Error listing silent bans.');
-        }
+        return interaction.editReply(getSilentBanLayout('list', { count: bans.length, listText }));
     }
 
 
     // Formats a date as a Discord timestamp ──────────
 
-    private formatExpiry(date: Date | null) {
-        if (!date) return '`Never`';
+    private async formatExpiry(date: Date | null, interaction: Subcommand.ChatInputCommandInteraction) {
+        if (!date) return resolveKey(interaction, 'modcommands:mod.silentban.never');
         return `<t:${Math.floor(date.getTime() / 1000)}:R>`;
     }
 }
+

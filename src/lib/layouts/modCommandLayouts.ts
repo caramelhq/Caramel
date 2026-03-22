@@ -3,122 +3,69 @@
 import type { GuildConfig } from '@prisma/client';
 import type { Guild } from 'discord.js';
 import { Emojis } from '../constants/emojis';
-
-// ─────────────────────────────────────────────────────────────
-// Internal Helpers
-// ─────────────────────────────────────────────────────────────
-
-// Adds the required Components V2 flag to any response
-function flaggedResponse(components: any[]) {
-    return { flags: 32768, components };
-}
-
-// Creates a simple container with one text display, with optional accent color
-function textContainer(content: string, accentColor?: number) {
-    return {
-        type: 17,
-        ...(accentColor !== undefined && { accent_color: accentColor }),
-        components: [{ type: 10, content }]
-    };
-}
-
-// Creates a divider separator between sections
-function divider(spacing = 2) {
-    return { type: 14, spacing, divider: true };
-}
+import { ContainerComponent, TextDisplayComponent, SeparatorComponent, ActionRowComponent, ButtonComponent, SectionComponent, StringSelectComponent } from './ui';
 
 // ─────────────────────────────────────────────────────────────
 // Global Command Layouts
 // ─────────────────────────────────────────────────────────────
 
-// Shown when the user cancels a confirmation flow (e.g. module reset or setup)
 export function getCancelledLayout(message: string) {
-    return flaggedResponse([
-        textContainer(message)
-    ]);
+    return { flags: 32768, components: [ContainerComponent([TextDisplayComponent(message)])] };
 }
 
-// Shown when a button interaction expires without a response
 export function getTimeoutLayout(message: string) {
-    return flaggedResponse([
-        textContainer(`⏱️ ${message}`)
-    ]);
+    return { flags: 32768, components: [ContainerComponent([TextDisplayComponent(`⏱️ ${message}`)])] };
 }
 
-// Shown after enabling or disabling a module — shows the new state with an emoji
 export function getStatusUpdateLayout(displayName: string, state: string, isEnabled: boolean) {
     const emoji = isEnabled ? Emojis.enabled_setting_emoji : Emojis.disabled_setting_emoji;
-    return flaggedResponse([
-        textContainer(`${emoji} ${state}`)
-    ]);
+    return { flags: 32768, components: [ContainerComponent([TextDisplayComponent(`${emoji} ${state}`)])] };
 }
 
 // ─────────────────────────────────────────────────────────────
 // Module Reset
 // ─────────────────────────────────────────────────────────────
 
-// Confirmation prompt shown before wiping a module's config (with Yes/No buttons)
 export function getResetLayout(confirmId: string, cancelId: string, title: string, description: string, deletionsText: string, yesLabel: string, noLabel: string) {
-    return flaggedResponse([
-        {
-            type: 17,
-            components: [
-                {
-                    type: 10,
-                    content: `${Emojis.reset_module_emoji} **${title}**\n\n${description}\n\n${deletionsText}\n\n-# This action cannot be undone.`
-                },
-                divider(),
-                {
-                    type: 1,
-                    components: [
-                        { type: 2, style: 4, custom_id: confirmId, label: yesLabel },
-                        { type: 2, style: 2, custom_id: cancelId,  label: noLabel }
-                    ]
-                }
-            ]
-        }
-    ]);
+    return { flags: 32768, components: [
+        ContainerComponent([
+            TextDisplayComponent(`${Emojis.reset_module_emoji} **${title}**\n\n${description}\n\n${deletionsText}\n\n-# This action cannot be undone.`),
+            SeparatorComponent(),
+            ActionRowComponent([
+                ButtonComponent(confirmId, yesLabel, 4),
+                ButtonComponent(cancelId, noLabel, 2)
+            ])
+        ])
+    ]};
 }
 
 // ─────────────────────────────────────────────────────────────
 // Module Setup
 // ─────────────────────────────────────────────────────────────
 
-// Confirmation prompt shown before running setup — lists what will be created (with Confirm/Cancel buttons)
 export function getModuleSetupConfirmLayout(confirmId: string, cancelId: string, title: string, description: string, actionsText: string, confirmLabel: string, cancelLabel: string) {
-    return flaggedResponse([
-        {
-            type: 17,
-            components: [
-                {
-                    type: 10,
-                    content: `## ${title}\n\n${description}\n\n${actionsText}\n\nDo you want to continue?`
-                },
-                divider(),
-                {
-                    type: 1,
-                    components: [
-                        { type: 2, style: 1, custom_id: confirmId, label: confirmLabel },
-                        { type: 2, style: 4, custom_id: cancelId,  label: cancelLabel }
-                    ]
-                }
-            ]
-        }
-    ]);
+    return { flags: 32768, components: [
+        ContainerComponent([
+            TextDisplayComponent(`## ${title}\n\n${description}\n\n${actionsText}\n\nDo you want to continue?`),
+            SeparatorComponent(),
+            ActionRowComponent([
+                ButtonComponent(confirmId, confirmLabel, 1),
+                ButtonComponent(cancelId, cancelLabel, 4)
+            ])
+        ])
+    ]};
 }
 
-// Summary card shown after a module setup completes successfully
 export function getModuleSetupSummaryLayout(title: string, actionsText: string, footer: string) {
-    return flaggedResponse([
-        textContainer(`## ${title}\n\n${actionsText}\n\n-# ${footer}`)
-    ]);
+    return { flags: 32768, components: [
+        ContainerComponent([TextDisplayComponent(`## ${title}\n\n${actionsText}\n\n-# ${footer}`)])
+    ]};
 }
 
 // ─────────────────────────────────────────────────────────────
 // Module Settings
 // ─────────────────────────────────────────────────────────────
 
-// Settings panel for a module — shows all config values with enable/disable badge pill
 export function getModuleLayout(moduleName: string, config: GuildConfig, guild: Guild, labels: any) {
     const isEnabled = (config as any)[`${moduleName}Module`] as boolean;
     const bullet = (value: unknown) => value ? Emojis.enabled_setting_emoji : Emojis.disabled_setting_emoji;
@@ -136,116 +83,201 @@ export function getModuleLayout(moduleName: string, config: GuildConfig, guild: 
     }
 
     if (moduleName === 'mod') {
+        const thresholdModeLabel = config.thresholdMode === 'all_actions' ? labels.modeAllActions : labels.modeModular;
+        const thresholdStatus = config.modThresholdsEnabled 
+            ? `${labels.enabled} (${thresholdModeLabel})` 
+            : labels.disabled;
+
         details = [
             `${bullet(config.modLogChannelId)} **${labels.logChannel}**: ${config.modLogChannelId ? `<#${config.modLogChannelId}>` : `\`${labels.notSet}\``}`,
-            `${bullet(config.mutedRoleId)} **${labels.mutedRole}**: ${config.mutedRoleId ? `<@&${config.mutedRoleId}>` : `\`${labels.notSet}\``}`
+            `${bullet(config.mutedRoleId)} **${labels.mutedRole}**: ${config.mutedRoleId ? `<@&${config.mutedRoleId}>` : `\`${labels.notSet}\``}`,
+            `${bullet(config.modThresholdsEnabled)} **${labels.thresholds}**: \`${thresholdStatus}\``
         ].join('\n');
     }
 
-    return flaggedResponse([
-        {
-            type: 17,
-            components: [
+    if (moduleName === 'automod') {
+        details = [
+            `${Emojis.static_setting_emoji} **${labels.rulesCount}**: \`Checking...\``,
+            `-# Use \`/automod rule list\` to manage rules.`
+        ].join('\n');
+    }
+
+    return { flags: 32768, components: [
+        ContainerComponent([
+            SectionComponent(
+                [TextDisplayComponent(`## ${labels.title}\n\n${details}`)],
                 {
-                    type: 9,
-                    components: [{ type: 10, content: `## ${labels.title}\n\n${details}` }],
-                    accessory: {
-                        type: 2,
-                        style: 2,
-                        label: isEnabled ? labels.enabled : labels.disabled,
-                        disabled: true,
-                        custom_id: `status_${moduleName}`,
-                        emoji: { id: isEnabled ? Emojis.enabled_module_emoji.match(/\d+/)?.[0] : Emojis.disabled_module_emoji.match(/\d+/)?.[0] }
-                    }
+                    type: 2,
+                    style: 2,
+                    label: isEnabled ? labels.enabled : labels.disabled,
+                    disabled: true,
+                    custom_id: `status_${moduleName}`,
+                    emoji: { id: isEnabled ? Emojis.enabled_module_emoji.match(/\d+/)?.[0] : Emojis.disabled_module_emoji.match(/\d+/)?.[0] }
                 }
-            ]
-        }
-    ]);
+            )
+        ])
+    ]};
 }
 
-// ─────────────────────────────────────────────────────────────
-// Moderation — Log
-// ─────────────────────────────────────────────────────────────
-
-// Log entry card sent to the mod-log channel — uses accent color to indicate severity
-export function getModLogLayout(data: {
-    title: string;
-    color: number;
-    lines: string[];
-    userId: string;
+export function getStaffConfirmationLayout(data: {
+    content: string;
+    caseId: number;
 }) {
     return {
         flags: 32768,
-        components: [{ type: 17, accent_color: data.color, components: [{ type: 10, content: data.lines.join('\n') }] }],
-        allowedMentions: { parse: [], users: [data.userId] }
+        components: [
+            ContainerComponent([
+                SectionComponent(
+                    [TextDisplayComponent(data.content)],
+                    {
+                        type: 2,
+                        style: 2,
+                        label: `Case #${data.caseId}`,
+                        custom_id: `mod_case_${data.caseId}`,
+                        disabled: false
+                    }
+                )
+            ])
+        ]
     };
+}
+
+/**
+ * Unified layout for Mod Logs and DMs.
+ * Automatically handles field visibility and i18n mapping.
+ */
+export function getSanctionLayout(data: {
+    type: 'ban' | 'tempban' | 'kick' | 'mute' | 'timeout' | 'softban' | 'warn' | 'unban' | 'unmute';
+    targetId: string;
+    moderatorId: string;
+    reason: string;
+    duration?: string | null;
+    labels: any; // { typeLabel: string, targetLabel: string, modLabel: string, reasonLabel: string, durationLabel: string, permanent: string }
+    caseId?: number;
+    createdAt?: Date;
+}) {
+    const { type, targetId, moderatorId, reason, duration, labels, caseId, createdAt } = data;
+
+    // Configuration map for colors and emojis
+    const config = {
+        ban:     { color: 0xE93548, emoji: Emojis.ban_emoji },
+        tempban: { color: 0xE93548, emoji: Emojis.tempban_emoji },
+        softban: { color: 0xFFB319, emoji: Emojis.softban_emoji },
+        kick:    { color: 0xFF4132, emoji: Emojis.kick_emoji },
+        mute:    { color: 0x747B8C, emoji: Emojis.mute_emoji },
+        timeout: { color: 0xFF8B00, emoji: Emojis.timeout_emoji },
+        warn:    { color: 0xF6DF3E, emoji: Emojis.warn_emoji },
+        unban:   { color: 0x00BF75, emoji: Emojis.unban_emoji },
+        unmute:  { color: 0x00BF75, emoji: Emojis.unmute_emoji }
+    };
+
+    const style = config[type] || config.warn; // Fallback to warn style
+    const timestamp = createdAt ? Math.floor(createdAt.getTime() / 1000) : Math.floor(Date.now() / 1000);
+
+    // Build the content string
+    const parts = [
+        `## ${style.emoji} ${labels.typeLabel}`,
+        `**${labels.targetLabel}:** <@${targetId}> (${targetId})`,
+    ];
+
+    if (['tempban', 'mute', 'timeout'].includes(type)) {
+        parts.push(`**${labels.durationLabel}:** ${duration ?? labels.permanent}`);
+    }
+
+    parts.push(`**${labels.reasonLabel}:** ${reason}`);
+    parts.push(''); // Empty line for spacing
+    parts.push(`-# **${labels.modLabel}:** <@${moderatorId}> (${moderatorId})`);
+    
+    if (caseId) {
+        parts.push(`-# Case #${caseId}・<t:${timestamp}:f>`);
+    } else {
+        parts.push(`-# <t:${timestamp}:f>`);
+    }
+
+    return { flags: 32768, components: [
+        ContainerComponent([
+            TextDisplayComponent(parts.join('\n'))
+        ], style.color)
+    ]};
 }
 
 // ─────────────────────────────────────────────────────────────
 // Silent Ban
 // ─────────────────────────────────────────────────────────────
 
-// List of all active silent bans in the server — shows count badge + entries
 export function getSilentBanListLayout(title: string, countLabel: string, listText: string) {
-    return flaggedResponse([
-        {
-            type: 17,
-            components: [
-                {
-                    type: 9,
-                    components: [{ type: 10, content: `${Emojis.static_setting_emoji} **${title}**⠀⠀⠀⠀⠀` }],
-                    accessory: {
-                        type: 2, style: 2, disabled: true,
-                        custom_id: 'silentban_list',
-                        label: countLabel
-                    }
-                },
-                { type: 14 },
-                { type: 10, content: listText }
-            ]
-        }
-    ]);
+    return { flags: 32768, components: [
+        ContainerComponent([
+            SectionComponent(
+                [TextDisplayComponent(`${Emojis.static_setting_emoji} **${title}**⠀⠀⠀⠀⠀`)],
+                { type: 2, style: 2, disabled: true, custom_id: 'silentban_list', label: countLabel }
+            ),
+            SeparatorComponent(),
+            TextDisplayComponent(listText)
+        ])
+    ]};
 }
 
-// Confirmation card shown when adding or removing a user from the silent ban list
-export function getSilentBanAddLayout(content: string, durationLabel: string, reason?: string | null) {
-    return flaggedResponse([
-        {
-            type: 17,
-            components: [
-                {
-                    type: 9,
-                    components: [{ type: 10, content: `${Emojis.enabled_setting_emoji} ${content}` }],
-                    accessory: {
-                        type: 2, style: 2, disabled: true,
-                        custom_id: 'duration',
-                        label: durationLabel,
-                        emoji: { id: Emojis.timeout_emoji.match(/\d+/)?.[0]! }
-                    }
-                },
-                ...(reason ? [
-                    { type: 14 },
-                    { type: 10, content: `${Emojis.static_setting_emoji} **Reason**: ${reason}` }
-                ] : [])
-            ]
-        }
-    ]);
+export function getSilentBanAddLayout(content: string, durationLabel: string, caseNumber?: number, reason?: string | null) {
+    const caseText = caseNumber ? `Case \`#${caseNumber}\` · ` : '';
+    return { flags: 32768, components: [
+        ContainerComponent([
+            SectionComponent(
+                [TextDisplayComponent(`${Emojis.enabled_setting_emoji} ${caseText}${content}`)],
+                { type: 2, style: 2, disabled: true, custom_id: 'duration', label: durationLabel, emoji: { id: Emojis.date_emoji.match(/\d+/)?.[0]! } }
+            ),
+            ...(reason ? [SeparatorComponent(), TextDisplayComponent(`${Emojis.static_setting_emoji} **Reason**: ${reason}`)] : [])
+        ])
+    ]};
+}
+
+export function getSilentBanLayout(action: 'add' | 'remove' | 'list', data: any) {
+    if (action === 'list') return getSilentBanListLayout('Silent Ban List', `${data.count} users`, data.listText);
+    if (action === 'remove') return { flags: 32768, components: [ContainerComponent([TextDisplayComponent(`${Emojis.disabled_setting_emoji} **${data.userTag}** has been removed from the silent ban list.`)])] };
+    return getSilentBanAddLayout(`**${data.userTag}** has been silent banned.`, data.duration, data.caseNumber, data.reason);
 }
 
 // ─────────────────────────────────────────────────────────────
-// Lockdown
+// Moderation — Thresholds
 // ─────────────────────────────────────────────────────────────
 
-// Simple text card for lockdown and unlock confirmation messages
-export function getLockdownLayout(content: string) {
-    return flaggedResponse([textContainer(content)]);
+export function getThresholdListLayout(data: {
+    title: string;
+    expirationText: string;
+    listText: string;
+    currentBranch: string;
+    interactionId: string;
+}) {
+    const branchNames: Record<string, string> = { all: 'All Actions', warn: 'Warnings', mute: 'Mutes', timeout: 'Timeouts', kick: 'Kicks', ban: 'Bans' };
+    const currentBranchName = branchNames[data.currentBranch] ?? 'General';
+
+    return { flags: 32768, components: [
+        ContainerComponent([
+            SectionComponent(
+                [TextDisplayComponent(`## ${data.title}⠀⠀⠀⠀⠀`)],
+                { type: 2, style: 2, disabled: true, custom_id: 'threshold_branch_display', label: currentBranchName, emoji: { id: Emojis.configuration_emoji.match(/\d+/)?.[0]! } }
+            ),
+            TextDisplayComponent(data.expirationText),
+            SeparatorComponent(),
+            TextDisplayComponent(data.listText),
+            SeparatorComponent(),
+            ActionRowComponent([
+                StringSelectComponent(
+                    `threshold_view_${data.interactionId}`,
+                    Object.entries(branchNames).map(([value, label]) => ({
+                        label, value, description: `View rules for ${label}`, default: value === data.currentBranch
+                    })),
+                    'Switch branch...'
+                )
+            ])
+        ])
+    ]};
 }
 
 // ─────────────────────────────────────────────────────────────
 // Mod DM
 // ─────────────────────────────────────────────────────────────
 
-// Red-accented card sent directly to the sanctioned user's DMs
 export function getModDMLayout(data: {
     title: string;
     description: string;
@@ -255,29 +287,71 @@ export function getModDMLayout(data: {
 }) {
     return {
         components: [
-            {
-                type: 17,
-                accent_color: 0xF44336, // Red
-                components: [
-                    {
-                        type: 9,
-                        components: [{ type: 10, content: `## ${data.title}\n\n${data.description}` }],
-                        accessory: {
-                            type: 2, style: 2, disabled: true,
-                            custom_id: 'mod_dm_info',
-                            label: 'Sanction Received',
-                            emoji: { id: Emojis.disabled_module_emoji.match(/\d+/)?.[0]! }
-                        }
-                    },
-                    { type: 14 },
-                    { type: 10, content: `${Emojis.static_setting_emoji} **Reason**: ${data.reason ?? 'No reason provided'}` },
-                    ...(data.duration ? [
-                        { type: 10, content: `${Emojis.timeout_emoji} **Duration**: ${data.duration}` }
-                    ] : []),
-                    { type: 14 },
-                    { type: 10, content: `-# ${data.footer}` }
-                ]
-            }
+            ContainerComponent([
+                SectionComponent(
+                    [TextDisplayComponent(`## ${data.title}\n\n${data.description}`)],
+                    { type: 2, style: 2, disabled: true, custom_id: 'mod_dm_info', label: 'Sanction Received', emoji: { id: Emojis.disabled_module_emoji.match(/\d+/)?.[0]! } }
+                ),
+                SeparatorComponent(),
+                TextDisplayComponent(`${Emojis.static_setting_emoji} **Reason**: ${data.reason ?? 'No reason provided'}`),
+                ...(data.duration ? [TextDisplayComponent(`${Emojis.date_emoji} **Duration**: ${data.duration}`)] : []),
+                SeparatorComponent(),
+                TextDisplayComponent(`-# ${data.footer}`)
+            ], 0xF44336) // Keep red for DMs
         ]
     };
+}
+
+export function getRemoveCaseConfirmLayout(data: {
+    caseNumber: number;
+    userId: string;
+    action: string;
+    reason: string;
+    confirmMsg: string;
+}) {
+    const content = [
+        `### ${data.confirmMsg}`,
+        `${Emojis.bullet_emoji} **User**: <@${data.userId}>`,
+        `${Emojis.bullet_emoji} **Action**: \`${data.action}\``,
+        `${Emojis.bullet_emoji} **Reason**: ${data.reason}`,
+        '',
+        '-# Respond with \`Y\` to confirm or \`N\` to cancel.'
+    ].join('\n');
+
+    return { flags: 32768, components: [ContainerComponent([TextDisplayComponent(content)], 0xF44336)] };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Moderation — Case Details
+// ─────────────────────────────────────────────────────────────
+
+export function getCaseDetailLayout(data: {
+    caseNumber: number;
+    userId: string;
+    moderatorId: string;
+    action: string;
+    reason: string;
+    duration?: string | null;
+    createdAt: Date;
+    labels: { title: string, user: string, moderator: string, action: string, reason: string, duration: string, date: string }
+}) {
+    const lines = [
+        `${Emojis.bullet_emoji} **${data.labels.user}**: <@${data.userId}> (\`${data.userId}\`)`,
+        `${Emojis.bullet_emoji} **${data.labels.moderator}**: <@${data.moderatorId}>`,
+        `${Emojis.bullet_emoji} **${data.labels.action}**: \`${data.action.toUpperCase()}\``,
+        `${Emojis.bullet_emoji} **${data.labels.reason}**: ${data.reason}`,
+    ];
+    if (data.duration) lines.push(`${Emojis.bullet_emoji} **${data.labels.duration}**: ${data.duration}`);
+    lines.push(`${Emojis.bullet_emoji} **${data.labels.date}**: <t:${Math.floor(data.createdAt.getTime() / 1000)}:F>`);
+
+    return { flags: 32768, components: [
+        ContainerComponent([
+            SectionComponent(
+                [TextDisplayComponent(`## ${data.labels.title}`)],
+                { type: 2, style: 2, disabled: true, custom_id: 'case_id', label: `#${data.caseNumber}`, emoji: { id: Emojis.static_setting_emoji.match(/\d+/)?.[0]! } }
+            ),
+            SeparatorComponent(),
+            TextDisplayComponent(lines.join('\n'))
+        ])
+    ]};
 }

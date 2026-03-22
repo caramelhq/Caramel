@@ -1,19 +1,16 @@
 import { Command, Args } from '@sapphire/framework';
+import { ApplyOptions } from '@sapphire/decorators';
 import { resolveKey } from '@sapphire/plugin-i18next';
 import { getRollLayout } from '../../lib/layouts/funLayouts';
 import { Emojis } from '../../lib/constants/emojis';
 import type { Message } from 'discord.js';
 
+@ApplyOptions<Command.Options>({
+    name: 'roll',
+    aliases: ['dice'],
+    description: 'Roll a dice!'
+})
 export class RollCommand extends Command {
-    public constructor(context: Command.LoaderContext, options: Command.Options) {
-        super(context, {
-            ...options,
-            name: 'roll',
-            aliases: ['dice'],
-            description: 'Roll a dice!'
-        });
-    }
-
     public override registerApplicationCommands(registry: Command.Registry) {
         registry.registerChatInputCommand((builder) =>
             builder
@@ -36,26 +33,25 @@ export class RollCommand extends Command {
         const max = interaction.options.getInteger('max') ?? 6;
         const result = Math.floor(Math.random() * max) + 1;
 
-        const response = await resolveKey(interaction, 'funcommands:roll.response', {
-            user: interaction.user.displayName,
+        const content = await resolveKey(interaction, 'funcommands:roll.result', {
+            emoji: Emojis.roll_the_dice_emoji,
             result,
             max
         });
 
-        return interaction.reply(getRollLayout(`${Emojis.roll_the_dice_emoji} ${response}`));
+        return interaction.reply(getRollLayout(content));
     }
 
     public override async messageRun(message: Message, args: Args) {
         const max = await args.pick('integer').catch(() => 6);
         const result = Math.floor(Math.random() * max) + 1;
 
-        const response = await resolveKey(message, 'funcommands:roll.response', {
-            user: message.author.displayName,
+        const content = await resolveKey(message, 'funcommands:roll.result', {
+            emoji: Emojis.roll_the_dice_emoji,
             result,
             max
         });
 
-        return message.reply(getRollLayout(`${Emojis.roll_the_dice_emoji} ${response}`));
+        return message.reply(getRollLayout(content));
     }
 }
-

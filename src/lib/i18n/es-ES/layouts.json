@@ -1,45 +1,28 @@
 {
-  "footer": "Gracias a Caramel • {{version}}",
-  "modLog": {
-    "warn": "Advertencia",
-    "mute": "Silenciado",
-    "ban": "Baneado",
-    "kick": "Expulsado",
-    "timeout": "Aislamiento",
-    "unmute": "Desilenciado",
-    "user": "Usuario",
-    "moderator": "Moderador",
-    "reason": "Razón",
-    "noReason": "No se ha proporcionado una razón",
-    "duration": "Duración",
-    "totalWarns": "Advertencias totales"
-  },
-  "modDM": {
-    "warn": "Has recibido una **advertencia** en **{{guild}}**.",
-    "mute": "Has sido **silenciado** en **{{guild}}**.",
-    "ban": "Has sido **baneado** de **{{guild}}**.",
-    "kick": "Has sido **expulsado** de **{{guild}}**.",
-    "timeout": "Has sido **aislado** en **{{guild}}**.",
-    "unmute": "Has sido **desmuteado** en **{{guild}}**.",
-    "footer": "Si crees que esto fue un error, por favor contacta al personal del servidor."
-  },
+  "cancelled": "{{cross}} Acción cancelada.",
+  "timeout": "{{cross}} Tiempo agotado.",
+  "error": "{{error}} Ocurrió un error inesperado.",
+  "success": "{{check}} Operación completada con éxito!",
   "settings": {
-    "title": "Configuración de {{name}}",
-    "setupTitle": "Configuración de {{name}}",
-    "enabled": "Habilitado",
-    "disabled": "Deshabilitado",
-    "notSet": "No configurado",
+    "title": "{{gear}} Ajustes de {{name}}",
+    "enabled": "Activado",
+    "disabled": "Desactivado",
+    "notSet": "No Configurado",
     "vanity": {
-      "keyword": "Palabra clave",
-      "role": "Rol",
-      "channel": "Canal",
-      "usersWithVanity": "Usuarios con vanity"
+      "keyword": "Palabra Clave",
+      "role": "Rol de Recompensa",
+      "channel": "Canal de Logs",
+      "usersWithVanity": "Usuarios con Vanity"
     },
     "mod": {
-      "logChannel": "Canal de registros",
-      "mutedRole": "Rol de silenciado"
+      "logChannel": "Logs de Mod",
+      "mutedRole": "Rol de Mute",
+      "thresholds": "Reglas de Infracción",
+      "modeModular": "Modular",
+      "modeAllActions": "Todas las Acciones"
     },
-    "footerEnable": "Usa </module enable:1475038787796205760> para activar este módulo.",
-    "footerDisable": "Usa </module disable:1475038787796205760> para desactivar este módulo."
+    "automod": {
+      "rulesCount": "Reglas Activas"
+    }
   }
 }

@@ -1,19 +1,18 @@
 {
   "banana": {
-    "description": "🍌 ¿Cuánto mide tu banana?",
-    "response": "La banana de **{{user}}** mide **{{cm}}cm**.",
+    "description": "{{emoji}} ¿Cuánto mide tu banana?",
+    "response": "{{emoji}} La banana de **{{user}}** mide **{{cm}}cm**.",
     "results": {
-      "tragic": "💀 Trágico",
-      "rough": "😬 Complicado",
-      "mid": "😐 Normal",
-      "notBad": "😏 Nada mal",
-      "impressive": "😳 Impresionante",
-      "legendary": "🏆 Legendario"
+      "tragic": "{{emoji}} Eso es trágico..",
+      "rough": "{{emoji}} Bueno, al menos lo intentaste.",
+      "mid": "{{emoji}} Nada mal, promedio.",
+      "notBad": "{{emoji}} ¡Está bastante bien!",
+      "impressive": "{{emoji}} ¡Impresionante!",
+      "legendary": "{{emoji}} ¡ERES UNA LEYENDA!"
     }
   },
   "roll": {
-    "description": "🎲 ¡Tira un dado!",
-    "optionDescription": "Número máximo (por defecto: 6)",
-    "response": "**{{user}}** lanzó un dado y salió **{{result}}**! (1-{{max}})"
+    "description": "{{emoji}} Lanza un dado.",
+    "result": "{{emoji}} ¡Has sacado un **{{result}}**!"
   }
 }

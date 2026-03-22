@@ -51,5 +51,13 @@ export const ModuleValidators: Record<string, (config: any, guild: any) => Promi
         if (!role) return { isValid: false, missing: ['The **muted role** has not been configured or is invalid.'] };
 
         return { isValid: true };
+    },
+
+    // AutoMod validator ──────────
+
+    automod: async (config, _guild) => {
+        // AutoMod doesn't have strict requirements initially other than basic existence
+        if (!config) return { isValid: false, missing: ['Server configuration not found. Run /module setup first.'] };
+        return { isValid: true };
     }
 };

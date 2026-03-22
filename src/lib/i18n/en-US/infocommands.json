@@ -1,23 +1,23 @@
 {
-  "user": {
-    "description": "User information",
-    "targetDescription": "User to inspect (defaults to you)",
-    "labels": {
-      "joinedDiscord": "Joined Discord",
-      "joinedServer": "Joined Server",
-      "highestRole": "Highest Role",
-      "viewHistoryBtn": "View History",
-      "addNoteBtn": "Add Note"
-    }
-  },
   "history": {
-    "title": "{{user}}'s Sanction History",
-    "specifyUser": "`❌` Please specify a user or a valid user ID.",
-    "noSanctions": "`✅` This user has no prior sanctions on record."
+    "usage": "<user|user_id>",
+    "specifyUser": "{{cross}} Please specify a user or a valid user ID.",
+    "noSanctions": "{{list}} No sanctions found for this user.",
+    "title": "Sanction History for <@{{user}}>"
   },
-  "errors": {
-    "notYourButton": "`❌` You cannot interact with this button because you didn't execute the command."
+  "user": {
+    "notYourButton": "{{cross}} You cannot interact with this button because you did not execute the command.",
+    "labels": {
+      "badges": "Badges",
+      "general": "General Information",
+      "id": "ID",
+      "created": "Created",
+      "joined": "Joined",
+      "roles": "Roles ({{count}})",
+      "modHistory": "Moderation History",
+      "viewHistory": "View History",
+      "addNote": "Add Note",
+      "permissions": "Key Permissions"
+    }
   }
 }
-
-

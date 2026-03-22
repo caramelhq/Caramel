@@ -1,30 +1,23 @@
 {
-  "vanity": {
-    "roleAdded": "Rol de vanity asignado: `{{role}}`",
-    "roleRemoved": "Rol de vanity eliminado: `{{role}}`"
-  },
   "config": {
     "language": {
-      "invalid": "`❌` Idioma no válido. Disponibles: `en`, `es`.",
-      "success": "`✅` Idioma actualizado a **{{lang}}**."
-    },
-    "module": {
-      "notFound": "`❌` Módulo no encontrado.",
-      "alreadyEnabled": "`❌` El módulo **{{name}}** ya está habilitado.",
-      "alreadyDisabled": "`❌` El módulo **{{name}}** ya está deshabilitado.",
-      "enabled": "Módulo **{{name}}** habilitado.",
-      "disabled": "Módulo **{{name}}** deshabilitado.",
-      "resetTitle": "Reiniciar módulo: {{name}}",
-      "resetDesc": "Esto eliminará toda la configuración del módulo **{{name}}** en este servidor.",
-      "resetDeletions": "Se eliminarán los siguientes datos:",
-      "resetConfirm": "Sí, reiniciar todo",
-      "resetCancel": "No, mantenerlo",
-      "resetSuccess": "`✅` El módulo **{{name}}** ha sido reiniciado.",
-      "setupTitle": "Configuración: {{name}}",
-      "setupDesc": "Estás a punto de configurar el módulo **{{name}}**.",
-      "setupConfirm": "Sí, proceder",
-      "setupCancel": "No, cancelar",
-      "setupSuccess": "`✅` El módulo **{{name}}** ha sido configurado."
+      "invalid": "{{cross}} Idioma no válido. Disponibles: `en`, `es`.",
+      "success": "{{check}} Idioma actualizado a **{{lang}}**."
     }
+  },
+  "module": {
+    "notFound": "{{cross}} Módulo no encontrado.",
+    "alreadyEnabled": "{{cross}} El módulo **{{name}}** ya está habilitado.",
+    "alreadyDisabled": "{{cross}} El módulo **{{name}}** ya está deshabilitado.",
+    "enabled": "habilitado",
+    "disabled": "deshabilitado",
+    "enableSuccess": "El módulo **{{name}}** ha sido habilitado.",
+    "disableSuccess": "El módulo **{{name}}** ha sido deshabilitado.",
+    "resetSuccess": "{{check}} El módulo **{{name}}** ha sido reiniciado.",
+    "setupSuccess": "{{check}} El módulo **{{name}}** ha sido configurado."
+  },
+  "prefix": {
+    "invalid": "{{cross}} El prefijo debe tener entre 1 y 5 caracteres y no puede contener espacios.",
+    "success": "{{check}} El prefijo ha sido actualizado a: `{{prefix}}`"
   }
 }

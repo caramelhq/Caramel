@@ -1,19 +1,18 @@
 {
   "banana": {
-    "description": "🍌 How long is your banana?",
-    "response": "**{{user}}**'s banana is **{{cm}}cm** long.",
+    "description": "{{emoji}} How long is your banana?",
+    "response": "{{emoji}} **{{user}}**'s banana is **{{cm}}cm** long.",
     "results": {
-      "tragic": "💀 Tragic",
-      "rough": "😬 Rough",
-      "mid": "😐 Mid",
-      "notBad": "😏 Not bad",
-      "impressive": "😳 Impressive",
-      "legendary": "🏆 Legendary"
+      "tragic": "{{emoji}} That's tragic..",
+      "rough": "{{emoji}} Well, at least you tried.",
+      "mid": "{{emoji}} Not bad, average.",
+      "notBad": "{{emoji}} That's pretty good!",
+      "impressive": "{{emoji}} Impressive!",
+      "legendary": "{{emoji}} YOU ARE A LEGEND!"
     }
   },
   "roll": {
-    "description": "🎲 Roll a dice!",
-    "optionDescription": "Maximum number (default: 6)",
-    "response": "**{{user}}** rolled a dice and got **{{result}}**! (1-{{max}})"
+    "description": "{{emoji}} Roll a die.",
+    "result": "{{emoji}} You rolled a **{{result}}**!"
   }
 }

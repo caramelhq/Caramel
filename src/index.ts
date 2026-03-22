@@ -9,6 +9,8 @@ import { container } from '@sapphire/framework';
 import { setupVanityWorker } from './workers/VanityWorker';
 import { setupSilentBanWorker } from './workers/SilentBanWorker';
 import { setupMuteWorker } from './workers/MuteWorker';
+import { setupTempBanWorker } from './workers/TempBanWorker';
+import { MusicManager } from './lib/structures/MusicManager';
 
 
 // Bootstrap ──────────────────
@@ -24,6 +26,7 @@ async function bootstrap() {
         container.vanityWorker    = setupVanityWorker();
         container.silentBanWorker = setupSilentBanWorker();
         container.muteWorker      = setupMuteWorker();
+        container.tempBanWorker    = setupTempBanWorker();
 
         await client.start(process.env.DISCORD_TOKEN!);
     } catch (error) {
@@ -50,6 +53,8 @@ declare module '@sapphire/pieces' {
         vanityWorker:    ReturnType<typeof setupVanityWorker>;
         silentBanWorker: ReturnType<typeof setupSilentBanWorker>;
         muteWorker:      ReturnType<typeof setupMuteWorker>;
+        tempBanWorker:    ReturnType<typeof setupTempBanWorker>;
+        music:           MusicManager;
     }
 }
 

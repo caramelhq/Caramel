@@ -2,6 +2,7 @@ import { Listener } from '@sapphire/framework';
 import { Events, type Message } from 'discord.js';
 import { isSilentBanned } from '../../services/SilentBanService';
 import { silentBanQueue } from '../../lib/utils/SilentBanQueue';
+import { CacheManager } from '../../database/CacheManager';
 
 
 // Message create listener ──────────────────
@@ -17,8 +18,8 @@ export class MessageCreateListener extends Listener<typeof Events.MessageCreate>
     public async run(message: Message) {
         if (message.author.bot) return;
 
-        const { logger, client } = this.container;
-        const prefix = (client.options as any).defaultPrefix ?? 'c!';
+        const { logger } = this.container;
+        const prefix = message.guild ? await CacheManager.getPrefix(message.guild.id) : (this.container.client.options as any).defaultPrefix ?? 'c!';
         
         if (message.content.startsWith(prefix)) {
             logger.info(`[MESSAGE] Received from ${message.author.tag}: ${message.content}`);

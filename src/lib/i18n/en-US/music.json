@@ -1,0 +1,46 @@
+{
+  "play": {
+    "noChannel": "{{cross}} You must be in a voice channel to use this command.",
+    "wrongChannel": "{{cross}} You must be in the same voice channel as the bot.",
+    "noResults": "{{cross}} No results found for that search.",
+    "loaded": "Added to queue: **{{title}}**",
+    "playlistLoaded": "Loaded **{{count}}** tracks from playlist **{{name}}**."
+  },
+  "controls": {
+    "noTrack": "{{cross}} There is no track playing right now.",
+    "skip": "Track skipped.",
+    "stop": "Playback stopped.",
+    "loopEnabled": "Loop enabled.",
+    "loopDisabled": "Loop disabled.",
+    "paused": "Music paused.",
+    "resumed": "Music resumed.",
+    "shuffle": "The queue has been shuffled!",
+    "favoriteAdded": "Added to favorites!",
+    "favoriteRemoved": "Removed from favorites.",
+    "favoriteLimit": "You can only have up to 10 favorite songs."
+  },
+  "labels": {
+    "nowPlaying": "Now Playing",
+    "requestedBy": "Requested by",
+    "author": "Author",
+    "track": "Track",
+    "queue": "Music Queue",
+    "status": "Status",
+    "pause": "Pause",
+    "resume": "Resume",
+    "skip": "Skip",
+    "stop": "Stop",
+    "loop": "Loop",
+    "in": "In"
+    },
+
+  "lyrics": {
+  "noResults": "{{cross}} Lyrics not found for that song.",
+  "title": "Lyrics for: {{title}}",
+  "searching": "{{emoji}} Searching for lyrics...",
+  "footer": "Page {{current}} de {{total}}"
+  },
+  "queue": {
+  "empty": "{{cross}} The queue is currently empty."
+  }
+  }

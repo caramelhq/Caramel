@@ -1,12 +1,39 @@
-import { GuildMember, TextChannel } from 'discord.js';
+import { GuildMember, TextChannel, WebhookClient } from 'discord.js';
 import { container } from '@sapphire/framework';
 import { Queue } from 'bullmq';
-import { getVanityWelcomeLayout } from './layouts';
-import { sendCaramelLog } from './webhook';
 import { Redis } from 'ioredis';
+import { getVanityWelcomeLayout } from '../layouts/vanityLayouts';
 
 
 // Vanity utils ──────────────────
+
+const webhookCache = new Map<string, WebhookClient>();
+
+async function getVanityWebhook(channel: TextChannel): Promise<WebhookClient | null> {
+    if (webhookCache.has(channel.id)) return webhookCache.get(channel.id)!;
+    
+    try {
+        const webhooks = await channel.fetchWebhooks();
+        let webhook = webhooks.find(wh => 
+            wh.name === 'Caramel' && 
+            wh.owner?.id === channel.client.user?.id
+        );
+        if (!webhook) {
+            webhook = await channel.createWebhook({
+                name: 'Caramel',
+                avatar: channel.client.user?.displayAvatarURL(),
+                reason: 'Caramel vanity log'
+            });
+        }
+        const client = new WebhookClient({ url: `${webhook.url}?with_components=true` });
+            webhookCache.set(channel.id, client);
+        
+        return client;
+    } catch {
+        return null;
+    }
+}
+
 
 let _vanityQueue: Queue | null = null;
 
@@ -93,7 +120,8 @@ export async function checkVanity(member: GuildMember, hasVanity: boolean) {
                     const welcomeLayout = getVanityWelcomeLayout(member.id, vanityRoleId, avatar, vanityString);
                                         
                     try {
-                        await sendCaramelLog(channel, welcomeLayout);
+                        const webhookClient = await getVanityWebhook(channel);
+                        if (webhookClient) await webhookClient.send(welcomeLayout as any);
                         logger.info(`[VANITY] Message sent successfully`);
                     } catch (err) {
                         logger.error(`[LOG-ERROR] ${err}`);

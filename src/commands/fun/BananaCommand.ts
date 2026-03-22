@@ -1,5 +1,9 @@
 import { Command } from '@sapphire/framework';
 import { ApplyOptions } from '@sapphire/decorators';
+import { Message } from 'discord.js';
+import { resolveKey } from '@sapphire/plugin-i18next';
+import { getBananaLayout } from '../../lib/layouts/funLayouts';
+import { Emojis } from '../../lib/constants/emojis';
 
 
 // Constants ──────────────────
@@ -15,13 +19,13 @@ function randomBanana(): number {
     return Math.floor(Math.random() * (MAX_CM - MIN_CM + 1)) + MIN_CM;
 }
 
-function getResultLabel(cm: number): string {
-    if (cm === 0)  return '💀 Tragic';
-    if (cm <= 5)   return '😬 Rough';
-    if (cm <= 10)  return '😐 Mid';
-    if (cm <= 20)  return '😏 Not bad';
-    if (cm <= 28)  return '😳 Impressive';
-    return         '🏆 Legendary';
+async function getResultLabel(interactionOrMessage: Command.ChatInputCommandInteraction | Message, cm: number): Promise<string> {
+    if (cm === 0)  return resolveKey(interactionOrMessage, 'funcommands:banana.results.tragic', { emoji: Emojis.banana_result_tragic });
+    if (cm <= 5)   return resolveKey(interactionOrMessage, 'funcommands:banana.results.rough', { emoji: Emojis.banana_result_rough });
+    if (cm <= 10)  return resolveKey(interactionOrMessage, 'funcommands:banana.results.mid', { emoji: Emojis.banana_result_mid });
+    if (cm <= 20)  return resolveKey(interactionOrMessage, 'funcommands:banana.results.notBad', { emoji: Emojis.banana_result_notBad });
+    if (cm <= 28)  return resolveKey(interactionOrMessage, 'funcommands:banana.results.impressive', { emoji: Emojis.banana_result_impressive });
+    return         resolveKey(interactionOrMessage, 'funcommands:banana.results.legendary', { emoji: Emojis.banana_result_legendary });
 }
 
 
@@ -29,7 +33,7 @@ function getResultLabel(cm: number): string {
 
 @ApplyOptions<Command.Options>({
     name: 'banana',
-    description: '🍌 How long is your banana?',
+    description: 'How long is your banana?',
 })
 export class BananaCommand extends Command {
     public override registerApplicationCommands(registry: Command.Registry) {
@@ -43,43 +47,19 @@ export class BananaCommand extends Command {
     }
 
     public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-        const target = interaction.user;
-        const cm = randomBanana();
-        const label = getResultLabel(cm);
+        return interaction.reply(await this.getBananaResponse(interaction));
+    }
 
-        await interaction.reply({
-            flags: 32768,
-            components: [
-                {
-                    type: 17,
-                    // accent_color: 0xF9A825,
-                    components: [
-                        {
-                            type: 10,
-                            content: `**${target.displayName}**'s banana is **${cm}cm** long.`,
-                        },
-                        {
-                            type: 12,
-                            items: [
-                                {
-                                    media: { url: BANANA_IMAGE_URL },
-                                },
-                            ],
-                        },
-                        {
-                            type: 14,
-                            divider: false,
-                            spacing: 1,
-                        },
-                        {
-                            type: 10,
-                            content: [
-                                `-# ${label}`,
-                            ].join('\n'),
-                        },
-                    ],
-                },
-            ],
-        } as any);
+    public override async messageRun(message: Message) {
+        return message.reply(await this.getBananaResponse(message));
+    }
+
+    private async getBananaResponse(interactionOrMessage: Command.ChatInputCommandInteraction | Message) {
+        const target = 'user' in interactionOrMessage ? interactionOrMessage.user : interactionOrMessage.author;
+        const cm = randomBanana();
+        const label = await getResultLabel(interactionOrMessage, cm);
+        const content = await resolveKey(interactionOrMessage, 'funcommands:banana.response', { user: target.displayName ?? target.username, cm, emoji: Emojis.banana_emoji });
+
+        return getBananaLayout(content, BANANA_IMAGE_URL, label);
     }
 }

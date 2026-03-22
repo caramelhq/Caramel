@@ -3,13 +3,13 @@ import { PermissionFlagsBits, ComponentType, ChannelType, PermissionsBitField, M
 import { prisma } from '../../database/db';
 import { ModuleValidators } from '../../validators/ModuleValidator';
 import { CacheManager } from '../../database/CacheManager';
-import { getModuleLayout, getResetLayout, getCancelledLayout, getStatusUpdateLayout, getTimeoutLayout, getModuleSetupConfirmLayout, getModuleSetupSummaryLayout } from '../../lib/layouts/modCommandLayouts';
+import { getModuleLayout, getResetLayout, getCancelledLayout, getStatusUpdateLayout, getModuleSetupConfirmLayout, getModuleSetupSummaryLayout } from '../../lib/layouts/modCommandLayouts';
 import { getMessageLayout } from '../../lib/layouts/defaultLayout';
-import { resolveKey } from '@sapphire/plugin-i18next';
-import { Args, Command } from '@sapphire/framework';
+import { fetchT, resolveKey } from '@sapphire/plugin-i18next';
+import { Command } from '@sapphire/framework';
 import { Message } from 'discord.js';
 import { Emojis } from '../../lib/constants/emojis';
-import type { GuildConfig } from '@prisma/client';
+import { CaramelUserError } from '../../lib/structures/Errors';
 
 
 // Constants ──────────────────
@@ -19,6 +19,7 @@ import type { GuildConfig } from '@prisma/client';
 const MODULE_DISPLAY_NAMES: Record<string, string> = {
     vanity: 'Vanity Tracker',
     mod:    'Moderation',
+    automod: 'AutoMod',
 };
 
 function getDisplayName(moduleValue: string) {
@@ -78,9 +79,29 @@ const RESET_MAP: Record<string, (guildId: string, client: any) => Promise<void>>
             data: {
                 modLogChannelId: null, modModule: false, modThresholdsEnabled: false,
                 muteThreshold: 3, banThreshold: 5, mutedRoleId: null,
-                modChannelCreatedByBot: false, modRoleCreatedByBot: false
+                modChannelCreatedByBot: false, modRoleCreatedByBot: false,
+                thresholdMode: 'warns'
             }
         });
+
+        // Delete all threshold rules for this guild
+        await prisma.modThreshold.deleteMany({ where: { guildId } });
+
+        await CacheManager.syncGuild(guildId, updated);
+    },
+    automod: async (guildId, client) => {
+        const config = await prisma.guildConfig.findUnique({ where: { guildId } });
+        if (!config) return;
+
+        // Reset the flag
+        const updated = await prisma.guildConfig.update({
+            where: { guildId },
+            data: { automodModule: false }
+        });
+
+        // Delete all automod rules for this guild
+        await prisma.autoModRule.deleteMany({ where: { guildId } });
+
         await CacheManager.syncGuild(guildId, updated);
     }
 };
@@ -228,38 +249,32 @@ async function runSetupFlow(
         }
 
         if (i.customId === confirmId) {
-            try {
-                const data: Record<string, any> = {};
-                const summaryActions: string[] = [];
+            const data: Record<string, any> = {};
+            const summaryActions: string[] = [];
 
-                await run(data, summaryActions);
+            await run(data, summaryActions);
 
-                const updated = await prisma.guildConfig.upsert({
-                    where:  { guildId: guildId! },
-                    create: { guildId: guildId!, ...data },
-                    update: data,
-                });
-                await CacheManager.syncGuild(guildId!, updated);
+            const updated = await prisma.guildConfig.upsert({
+                where:  { guildId: guildId! },
+                create: { guildId: guildId!, ...data },
+                update: data,
+            });
+            await CacheManager.syncGuild(guildId!, updated);
 
-                const summaryText = summaryActions.map(a => `${Emojis.static_setting_emoji} ${a}`).join('\n');
-                return i.update({
-                    ...getModuleSetupSummaryLayout(
-                        getDisplayName(moduleName),
-                        summaryText,
-                        'Setup complete. You can now enable the module with `/module enable`.'
-                    )
-                }).then(() => collector.stop('success'));
-            } catch (error) {
-                return i.update({ ...getMessageLayout('`🔴` An error occurred during setup.') });
-            }
+            const summaryText = summaryActions.map(a => `${Emojis.static_setting_emoji} ${a}`).join('\n');
+            return i.update({
+                ...getModuleSetupSummaryLayout(
+                    getDisplayName(moduleName),
+                    summaryText,
+                    'Setup complete. You can now enable the module with `/module enable`.'
+                )
+            }).then(() => collector.stop('success'));
         }
     });
 
-    // Timeout if no interaction within the time limit ──────────
-
     collector.on('end', async (_, reason) => {
         if (reason !== 'success' && reason !== 'cancelled') {
-            await response.edit({ ...getMessageLayout('⏱️ Setup timed out. Please try again.') });
+            await response.edit({ ...getMessageLayout('⏱️ Setup timed out. Please try again.') }).catch(() => null);
         }
     });
 }
@@ -287,7 +302,8 @@ export class ModuleCommand extends Subcommand {
     public override registerApplicationCommands(registry: Subcommand.Registry) {
         const moduleChoices = [
             { name: 'Vanity Tracker', value: 'vanity' },
-            { name: 'Moderation',     value: 'mod'    }
+            { name: 'Moderation',     value: 'mod'    },
+            { name: 'AutoMod',        value: 'automod' }
         ] as const;
 
         const withModuleOption = (sub: any, description: string) =>
@@ -314,28 +330,97 @@ export class ModuleCommand extends Subcommand {
     public async chatInputSetup(interaction: Subcommand.ChatInputCommandInteraction) {
         const moduleValue = interaction.options.getString('name', true);
 
-        if (moduleValue === 'vanity') return this.handleVanitySetup(interaction);
-        if (moduleValue === 'mod')    return this.handleModSetup(interaction);
+        if (moduleValue === 'vanity')  return this.handleVanitySetup(interaction);
+        if (moduleValue === 'mod')     return this.handleModSetup(interaction);
+        if (moduleValue === 'automod') return this.handleAutoModSetup(interaction);
 
-        await interaction.reply({ content: '`❌` Setup for this module is not implemented yet.', ephemeral: false });
+        throw new CaramelUserError('errors:unexpected');
+    }
+
+
+    // AutoMod setup: simple confirmation to enable rules later ──────────
+
+    private async handleAutoModSetup(interaction: Subcommand.ChatInputCommandInteraction) {
+        const modal = new ModalBuilder()
+            .setCustomId(`automod_setup_${interaction.id}`)
+            .setTitle('AutoMod Setup')
+            .addComponents(
+                new ActionRowBuilder<TextInputBuilder>().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('confirm')
+                        .setLabel('Enable AutoMod features?')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true)
+                        .setPlaceholder('Type "Yes" to confirm')
+                        .setValue('Yes')
+                )
+            );
+
+        await interaction.showModal(modal);
+
+        const modalSubmit = await interaction.awaitModalSubmit({
+            time: 60000,
+            filter: (i) => i.customId === `automod_setup_${interaction.id}`
+        }).catch(() => null);
+
+        if (!modalSubmit) return;
+
+        await modalSubmit.deferReply({ ephemeral: false });
+
+        const confirmText = modalSubmit.fields.getTextInputValue('confirm').trim().toLowerCase();
+        if (confirmText !== 'yes' && confirmText !== 'si') {
+            return modalSubmit.editReply({ ...getCancelledLayout('❌ Setup aborted.') });
+        }
+
+        await runSetupFlow(
+            modalSubmit,
+            'automod',
+            ['Initialize AutoMod module', 'Unlock /automod commands'],
+            async (data, summaryActions) => {
+                data.automodModule = true; // Set to true by default during setup
+                summaryActions.push('AutoMod module initialized.');
+                summaryActions.push('You can now use `/automod rule add` to start filtering.');
+            }
+        );
     }
 
 
     // Vanity setup: shows modal and runs setup flow ──────────
 
     private async handleVanitySetup(interaction: Subcommand.ChatInputCommandInteraction) {
+        const config = await prisma.guildConfig.findUnique({ where: { guildId: interaction.guildId! } });
+
         const modal = new ModalBuilder()
             .setCustomId(`vanity_setup_${interaction.id}`)
             .setTitle('Vanity Tracker Setup')
             .addComponents(
                 new ActionRowBuilder<TextInputBuilder>().addComponents(
-                    new TextInputBuilder().setCustomId('keyword').setLabel('Status keyword (required)').setStyle(TextInputStyle.Short).setRequired(true).setPlaceholder('e.g. discord.gg/meetspace').setMaxLength(100)
+                    new TextInputBuilder()
+                        .setCustomId('keyword')
+                        .setLabel('Status keyword (required)')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true)
+                        .setPlaceholder('e.g. discord.gg/meetspace')
+                        .setMaxLength(100)
+                        .setValue(config?.vanityString ?? '')
                 ),
                 new ActionRowBuilder<TextInputBuilder>().addComponents(
-                    new TextInputBuilder().setCustomId('role').setLabel('Role ID or name (optional)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Vanity role | Leave empty to auto-create')
+                    new TextInputBuilder()
+                        .setCustomId('role')
+                        .setLabel('Role ID or name (optional)')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                        .setPlaceholder('Vanity role | Leave empty to auto-create')
+                        .setValue(config?.vanityRoleId ?? '')
                 ),
                 new ActionRowBuilder<TextInputBuilder>().addComponents(
-                    new TextInputBuilder().setCustomId('channel').setLabel('Channel ID or name (optional)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Log channel | Leave empty to auto-create')
+                    new TextInputBuilder()
+                        .setCustomId('channel')
+                        .setLabel('Channel ID or name (optional)')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                        .setPlaceholder('Log channel | Leave empty to auto-create')
+                        .setValue(config?.vanityChannelId ?? '')
                 )
             );
 
@@ -356,10 +441,14 @@ export class ModuleCommand extends Subcommand {
         const channelRaw   = modalSubmit.fields.getTextInputValue('channel').trim();
 
         const roleResult    = await resolveRole(roleRaw, guild!, `Vanity Role [${guild!.name}]`);
-        if (roleResult.error) return modalSubmit.editReply({ content: roleResult.error });
+        if (roleResult.error) {
+            return modalSubmit.editReply({ content: roleResult.error });
+        }
 
         const channelResult = await resolveChannel(channelRaw, guild!, 'vanity-logs');
-        if (channelResult.error) return modalSubmit.editReply({ content: channelResult.error });
+        if (channelResult.error) {
+            return modalSubmit.editReply({ content: channelResult.error });
+        }
 
         await runSetupFlow(
             modalSubmit,
@@ -398,15 +487,38 @@ export class ModuleCommand extends Subcommand {
     // Mod setup: shows modal and runs setup flow ──────────
 
     private async handleModSetup(interaction: Subcommand.ChatInputCommandInteraction) {
+        const config = await prisma.guildConfig.findUnique({ where: { guildId: interaction.guildId! } });
+
         const modal = new ModalBuilder()
             .setCustomId(`mod_setup_${interaction.id}`)
             .setTitle('Moderation Setup')
             .addComponents(
                 new ActionRowBuilder<TextInputBuilder>().addComponents(
-                    new TextInputBuilder().setCustomId('log_channel').setLabel('Log channel ID or name (optional)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Leave empty to auto-create #mod-logs')
+                    new TextInputBuilder()
+                        .setCustomId('log_channel')
+                        .setLabel('Log channel ID or name (optional)')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                        .setPlaceholder('Leave empty to auto-create #mod-logs')
+                        .setValue(config?.modLogChannelId ?? '')
                 ),
                 new ActionRowBuilder<TextInputBuilder>().addComponents(
-                    new TextInputBuilder().setCustomId('muted_role').setLabel('Muted role ID or name (optional)').setStyle(TextInputStyle.Short).setRequired(false).setPlaceholder('Leave empty to auto-create a muted role')
+                    new TextInputBuilder()
+                        .setCustomId('muted_role')
+                        .setLabel('Muted role ID or name (optional)')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                        .setPlaceholder('Leave empty to auto-create a muted role')
+                        .setValue(config?.mutedRoleId ?? '')
+                ),
+                new ActionRowBuilder<TextInputBuilder>().addComponents(
+                    new TextInputBuilder()
+                        .setCustomId('thresholds')
+                        .setLabel('Enable thresholds? (Yes/No)')
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(false)
+                        .setPlaceholder('Yes')
+                        .setValue(config ? (config.modThresholdsEnabled ? 'Yes' : 'No') : 'Yes')
                 )
             );
 
@@ -424,18 +536,32 @@ export class ModuleCommand extends Subcommand {
         const { guild }    = modalSubmit;
         const channelRaw   = modalSubmit.fields.getTextInputValue('log_channel').trim();
         const mutedRoleRaw = modalSubmit.fields.getTextInputValue('muted_role').trim();
+        const threshRaw    = modalSubmit.fields.getTextInputValue('thresholds').trim().toLowerCase();
 
         const channelResult = await resolveChannel(channelRaw, guild!, 'mod-logs');
-        if (channelResult.error) return modalSubmit.editReply({ content: channelResult.error });
+        if (channelResult.error) {
+            return modalSubmit.editReply({ content: channelResult.error });
+        }
 
         const roleResult = await resolveRole(mutedRoleRaw, guild!, 'Muted');
-        if (roleResult.error) return modalSubmit.editReply({ content: roleResult.error });
+        if (roleResult.error) {
+            return modalSubmit.editReply({ content: roleResult.error });
+        }
+
+        const thresholdsEnabled = threshRaw === 'yes' || threshRaw === 'si' || threshRaw === '';
 
         await runSetupFlow(
             modalSubmit,
             'mod',
-            [channelResult.action, roleResult.action],
+            [
+                channelResult.action, 
+                roleResult.action,
+                `Thresholds: **${thresholdsEnabled ? 'Enabled' : 'Disabled'}**`
+            ],
             async (data, summaryActions) => {
+                data.modThresholdsEnabled = thresholdsEnabled;
+                summaryActions.push(`Thresholds: **${thresholdsEnabled ? 'Enabled' : 'Disabled'}**`);
+
                 if (channelResult.resolvedId) {
                     data.modLogChannelId = channelResult.resolvedId;
                     data.modChannelCreatedByBot = false;
@@ -474,15 +600,44 @@ export class ModuleCommand extends Subcommand {
 
         await interaction.deferReply({ ephemeral: false });
 
-        try {
-            const config = await prisma.guildConfig.findUnique({ where: { guildId: guildId! } });
-            if (!config) return interaction.editReply({ content: '`❌` No configuration found.' });
-
-            return interaction.editReply(getModuleLayout(moduleValue, config, guild!, false));
-        } catch (error) {
-            this.container.logger.error(`[MODULE SETTINGS ERROR] Guild: ${guildId}`, error);
-            return interaction.editReply({ content: '`🔴` An error occurred while fetching settings.' });
+        let config = await prisma.guildConfig.findUnique({ where: { guildId: guildId! } });
+        
+        if (!config) {
+            config = await prisma.guildConfig.create({
+                data: { guildId: guildId!, locale: 'en-US' }
+            });
+            await CacheManager.syncGuild(guildId!, config);
         }
+
+        // Get the translator function for this interaction
+        const t = await fetchT(interaction);
+
+        // Populate labels using the translator
+        const labels: Record<string, string> = {
+            title: t('layouts:settings.title', { name: getDisplayName(moduleValue) }),
+            enabled: t('layouts:settings.enabled'),
+            disabled: t('layouts:settings.disabled'),
+            notSet: t('layouts:settings.notSet'),
+        };
+
+        if (moduleValue === 'vanity') {
+            labels.keyword = t('layouts:settings.vanity.keyword');
+            labels.role = t('layouts:settings.vanity.role');
+            labels.channel = t('layouts:settings.vanity.channel');
+            labels.usersWithVanity = t('layouts:settings.vanity.usersWithVanity');
+        } else if (moduleValue === 'mod') {
+            labels.logChannel = t('layouts:settings.mod.logChannel');
+            labels.mutedRole = t('layouts:settings.mod.mutedRole');
+            labels.thresholds = t('layouts:settings.mod.thresholds');
+            labels.modeModular = t('layouts:settings.mod.modeModular');
+            labels.modeAllActions = t('layouts:settings.mod.modeAllActions');
+        } else if (moduleValue === 'automod') {
+            labels.rulesCount = t('layouts:settings.automod.rulesCount');
+        }
+
+        this.container.logger.info(`[MODULE] Showing settings for ${moduleValue}. Labels:`, labels);
+
+        return interaction.editReply(getModuleLayout(moduleValue, config, guild!, labels));
     }
 
 
@@ -495,33 +650,40 @@ export class ModuleCommand extends Subcommand {
 
         await interaction.deferReply({ ephemeral: false });
 
-        try {
-            const config    = await prisma.guildConfig.findUnique({ where: { guildId: guildId! } });
-            const validator = ModuleValidators[moduleValue];
+        const config = await prisma.guildConfig.findUnique({ where: { guildId: guildId! } });
+        
+        // Dynamic key resolving to match Prisma's camelCase exactly ──────────
+        const configKey = (moduleValue === 'automod' ? 'automodModule' : `${moduleValue}Module`) as keyof typeof config;
+        
+        // Check if already enabled ──────────
+        if (config && (config as any)[configKey] === true) {
+            return interaction.editReply({ ...getMessageLayout(`\`⚠️\` **${displayName}** module is already enabled.`) });
+        }
 
-            if (!validator) return interaction.editReply({ ...getMessageLayout(`\`❌\` Module **${displayName}** not supported.`) });
-            if ((config as any)?.[`${moduleValue}Module`] === true) return interaction.editReply({ ...getMessageLayout(`\`❌\` Module **${displayName}** is already enabled.`) });
+        const validator = ModuleValidators[moduleValue];
+        if (!validator) return interaction.editReply({ ...getMessageLayout('`❌` Internal error: validator not found.') });
 
-            const { isValid, missing } = await validator(config, guild);
+        const { isValid, missing, needsChannel } = await validator(config, guild);
 
-            if (!isValid) {
+        if (!isValid) {
+            if (needsChannel) {
                 return interaction.editReply({
-                    ...getMessageLayout(`\`❌\` **${displayName}** module cannot be enabled:\n${missing?.map(m => `${Emojis.static_setting_emoji} ${m}`).join('\n') ?? 'Run \`/module setup\` first.'}`)
+                    ...getMessageLayout(`\`❌\` **${displayName}** module needs a log channel before being enabled. Run \`/module setup\` first.`)
                 });
             }
-
-            const updated = await prisma.guildConfig.update({
-                where: { guildId: guildId! },
-                data:  { [`${moduleValue}Module`]: true }
+            const missingText = missing?.map(m => `${Emojis.static_setting_emoji} ${m}`).join('\n') ?? 'Run \`/module setup\` first.';
+            return interaction.editReply({
+                ...getMessageLayout(`\`❌\` **${displayName}** module cannot be enabled:\n${missingText}`)
             });
-            await CacheManager.syncGuild(guildId!, updated);
-
-            const state = `Module **${displayName}** enabled.`;
-            return interaction.editReply(getStatusUpdateLayout(displayName, state, true));
-        } catch (error) {
-            this.container.logger.error(`[ENABLE ERROR]`, error);
-            return interaction.editReply({ ...getMessageLayout('`🔴` Error enabling module.') });
         }
+
+        const updated = await prisma.guildConfig.update({
+            where: { guildId: guildId! },
+            data:  { [configKey]: true }
+        });
+        await CacheManager.syncGuild(guildId!, updated);
+
+        return interaction.editReply(getStatusUpdateLayout(displayName, `Module **${displayName}** enabled.`, true));
     }
 
 
@@ -534,19 +696,21 @@ export class ModuleCommand extends Subcommand {
 
         await interaction.deferReply({ ephemeral: false });
 
-        try {
-            const updated = await prisma.guildConfig.update({
-                where: { guildId: guildId! },
-                data:  { [`${moduleValue}Module`]: false }
-            });
-            await CacheManager.syncGuild(guildId!, updated);
+        const config = await prisma.guildConfig.findUnique({ where: { guildId: guildId! } });
+        const configKey = (moduleValue === 'automod' ? 'automodModule' : `${moduleValue}Module`) as keyof typeof config;
 
-            const state = `Module **${displayName}** disabled.`;
-            return interaction.editReply(getStatusUpdateLayout(displayName, state, false));
-        } catch (error) {
-            this.container.logger.error(`[DISABLE ERROR]`, error);
-            return interaction.editReply({ ...getMessageLayout('`🔴` Error disabling module.') });
+        // Check if already disabled ──────────
+        if (config && (config as any)[configKey] === false) {
+            return interaction.editReply({ ...getMessageLayout(`\`⚠️\` **${displayName}** module is already disabled.`) });
         }
+
+        const updated = await prisma.guildConfig.update({
+            where: { guildId: guildId! },
+            data:  { [configKey]: false }
+        });
+        await CacheManager.syncGuild(guildId!, updated);
+
+        return interaction.editReply(getStatusUpdateLayout(displayName, `Module **${displayName}** disabled.`, false));
     }
 
 
@@ -580,21 +744,17 @@ export class ModuleCommand extends Subcommand {
 
         collector.on('collect', async (i) => {
             if (i.customId === confirmId) {
-                try {
-                    await RESET_MAP[moduleName]?.(guildId!, this.container.client);
-                    return i.update({ ...getMessageLayout(`✅ Module **${getDisplayName(moduleName)}** has been reset.`) }).then(() => collector.stop('success'));
-                } catch (error) {
-                    return i.reply({ ...getMessageLayout('`🔴` Error resetting.'), ephemeral: false });
-                }
+                await RESET_MAP[moduleName]?.(guildId!, this.container.client);
+                return i.update({ ...getMessageLayout(`✅ Module **${getDisplayName(moduleName)}** has been reset.`) }).then(() => collector.stop('success'));
             }
-            if (i.customId === cancelId) return i.update({ ...getCancelledLayout('❌ Reset cancelled.') }).then(() => collector.stop('cancelled'));
+            if (i.customId === cancelId) {
+                return i.update({ ...getCancelledLayout('❌ Reset cancelled.') }).then(() => collector.stop('cancelled'));
+            }
         });
-
-        // Timeout if no interaction within the time limit ──────────
 
         collector.on('end', async (_, reason) => {
             if (reason !== 'success' && reason !== 'cancelled') {
-                await response.edit({ ...getMessageLayout('⏱️ Timed out. No response received.') });
+                await response.edit({ ...getMessageLayout('⏱️ Timed out. No response received.') }).catch(() => null);
             }
         });
     }

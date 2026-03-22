@@ -3,7 +3,9 @@ import { resolveKey } from '@sapphire/plugin-i18next';
 import { PermissionFlagsBits, Message } from 'discord.js';
 import { prisma } from '../../database/db';
 import { CacheManager } from '../../database/CacheManager';
+import { Emojis } from '../../lib/constants/emojis';
 import { getMessageLayout } from '../../lib/layouts/defaultLayout';
+import { CaramelUserError } from '../../lib/structures/Errors';
 
 export class LanguageCommand extends Command {
     public constructor(context: Command.LoaderContext, options: Command.Options) {
@@ -11,7 +13,7 @@ export class LanguageCommand extends Command {
             ...options,
             name: 'language',
             aliases: ['lang'],
-            description: 'Change the bot language for this server.',
+            description: 'Change the bot language.',
             preconditions: ['GuildOnly'],
             runIn: ['GUILD_ANY']
         });
@@ -46,11 +48,10 @@ export class LanguageCommand extends Command {
     }
 
     public override async messageRun(message: Message, args: Args) {
-        if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) return;
-
-        const newLocale = await args.pick('string').catch(() => null);
-        if (!newLocale || !['en-US', 'es-ES', 'en', 'es'].includes(newLocale)) {
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'modules:config.language.invalid')) });
+        const newLocale = await args.pick('string').catch(() => { throw new CaramelUserError('modules:config.language.invalid'); });
+        
+        if (!['en-US', 'es-ES', 'en', 'es'].includes(newLocale)) {
+            throw new CaramelUserError('modules:config.language.invalid');
         }
 
         const normalizedLocale = (newLocale === 'es' || newLocale === 'es-ES') ? 'es-ES' : 'en-US';
@@ -58,28 +59,22 @@ export class LanguageCommand extends Command {
     }
 
     private async updateLanguage(target: Command.ChatInputCommandInteraction | Message, guildId: string, newLocale: string) {
-        try {
-            const updated = await prisma.guildConfig.upsert({
-                where: { guildId },
-                update: { locale: newLocale },
-                create: { guildId, locale: newLocale }
-            });
+        const updated = await prisma.guildConfig.upsert({
+            where: { guildId },
+            update: { locale: newLocale },
+            create: { guildId, locale: newLocale }
+        });
 
-            await CacheManager.syncGuild(guildId, updated);
+        await CacheManager.syncGuild(guildId, updated);
 
-            const langDisplay = newLocale === 'es-ES' ? 'Español' : 'English';
-            const successMessage = await resolveKey(target, 'modules:config.language.success', { lang: langDisplay });
+        const langDisplay = newLocale === 'es-ES' ? 'Español' : 'English';
+        const successMessage = await resolveKey(target, 'modules:config.language.success', { lang: langDisplay, check: Emojis.check_emoji });
 
-            if (target instanceof Message) {
-                return target.reply(getMessageLayout(successMessage));
-            } else {
-                return target.editReply(getMessageLayout(successMessage));
-            }
-        } catch (error) {
-            this.container.logger.error(`[CONFIG LANGUAGE] Failed to update locale for ${guildId}:`, error);
-            const errContent = { content: await resolveKey(target, 'errors:unexpected') };
-            if (target instanceof Message) return target.reply(errContent);
-            return target.editReply(errContent);
+        const layout = getMessageLayout(successMessage);
+        if (target instanceof Message) {
+            return target.reply(layout);
+        } else {
+            return target.editReply(layout);
         }
     }
 }

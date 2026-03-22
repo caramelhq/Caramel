@@ -80,10 +80,19 @@ export async function addSilentBan(
 ): Promise<SilentBan> {
     const expiresAt = durationMs ? new Date(Date.now() + durationMs) : null;
 
+    // Increment caseCount in GuildConfig
+    const config = await prisma.guildConfig.update({
+        where: { guildId },
+        data: { caseCount: { increment: 1 } },
+        select: { caseCount: true }
+    });
+
+    const caseNumber = config.caseCount;
+
     const ban = await prisma.silentBan.upsert({
         where:  { guild_user_unique: { guildId, userId } },
-        create: { guildId, userId, moderatorId, reason, expiresAt },
-        update: { moderatorId, reason, expiresAt },
+        create: { guildId, userId, moderatorId, reason, expiresAt, caseNumber },
+        update: { moderatorId, reason, expiresAt, caseNumber },
     });
 
     const oldJob = await silentBanQueue.getJob(`expire-${guildId}-${userId}`).catch(() => null);

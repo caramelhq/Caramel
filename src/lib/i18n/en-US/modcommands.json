@@ -1,57 +1,99 @@
 {
+  "sanctions": {
+    "types": {
+      "ban": "User Banned",
+      "tempban": "User Temp-banned",
+      "unban": "User Unbanned",
+      "kick": "User Kicked",
+      "mute": "User Muted",
+      "unmute": "User Unmuted",
+      "timeout": "User Timed Out",
+      "softban": "User Soft-banned",
+      "warn": "User Warned",
+      "slowmode": "Slowmode Updated",
+      "lockdown": "Channel Lockdown"
+    },
+    "confirmations": {
+      "ban": "{{user}} has been **banned**.",
+      "tempban": "{{user}} has been **temp-banned**.",
+      "kick": "{{user}} has been **kicked**.",
+      "mute": "{{user}} has been **muted**.",
+      "timeout": "{{user}} has been **timed out**.",
+      "softban": "{{user}} has been **soft-banned**.",
+      "warn": "{{user}} has been **warned**.",
+      "unban": "{{user}} has been **unbanned**.",
+      "unmute": "{{user}} has been **unmuted**.",
+      "slowmode": "Slowmode set to **{{time}}**.",
+      "slowmode_remote": "Slowmode set to **{{time}}** in {{channel}}.",
+      "slowmode_disabled": "Slowmode has been **disabled**.",
+      "slowmode_disabled_remote": "Slowmode has been **disabled** in {{channel}}.",
+      "lockdown": "This channel has been **locked**.",
+      "unlockdown": "This channel has been **unlocked**.",
+      "lockdown_remote": "{{channel}} has been **locked**.",
+      "unlockdown_remote": "{{channel}} has been **unlocked**.",
+      "slowmode_cap": "The maximum slowmode limit is **6 hours**."
+    },
+    "fields": {
+      "target": "Target",
+      "staff": "Action by",
+      "reason": "Reason",
+      "duration": "Duration",
+      "date": "Date",
+      "permanent": "Permanent"
+    }
+  },
   "mod": {
-    "validate": {
-      "bot": "`❌` You cannot moderate a bot.",
-      "self": "`❌` You cannot moderate yourself.",
-      "owner": "`❌` You cannot moderate the server owner.",
-      "higherRole": "`❌` You cannot moderate someone with an equal or higher role."
-    },
-    "setup": {
-      "configMissing": "`❌` Moderation module is not configured or disabled. Use `/module setup name:Moderation` first."
-    },
-    "warn": {
-      "success": "{{emoji}} **{{user}}** has been warned. Total warnings: `{{count}}`"
-    },
-    "mute": {
-      "success": "{{emoji}} **{{user}}** has been muted{{duration}}.",
-      "roleMissing": "`❌` Muted role is not configured. Run `/module setup name:Moderation` again.",
-      "notMuted": "`❌` This member is not muted.",
-      "unmuteSuccess": "{{emoji}} **{{user}}** has been unmuted.",
-      "unmuteHigherRole": "`❌` You cannot unmute someone with an equal or higher role."
+    "usage": {
+      "ban": "ban <user> [reason] [days]",
+      "kick": "kick <user> [reason]",
+      "mute": "mute <user> [duration] [reason]",
+      "unmute": "unmute <user> [reason]",
+      "warn": "warn <user> [reason]",
+      "softban": "softban <user> [reason]",
+      "timeout": "timeout <user> <duration> [reason]",
+      "tempban": "tempban <user> <duration> [reason]",
+      "unban": "unban <user_id> [reason]",
+      "slowmode": "slowmode <time> [channel]",
+      "case": "case <number>",
+      "removeCase": "remove-case <number>"
     },
     "ban": {
-      "success": "{{emoji}} **{{user}}** has been banned.",
-      "notBannable": "`❌` I cannot ban this member. Check my role position.",
-      "softbanSuccess": "{{emoji}} **{{user}}** has been softbanned. Messages from the last **{{days}} days** were deleted.",
-      "softbanSuccessMsg": "{{emoji}} **{{user}}** has been softbanned."
+      "notBanned": "This user is not banned.",
+      "notBannable": "I cannot ban this user (they might have higher roles than me).",
+      "softbanAuditReason": "Soft-ban (Ban + Unban to delete messages)"
     },
     "kick": {
-      "success": "{{emoji}} **{{user}}** has been kicked.",
-      "notKickable": "`❌` I cannot kick this member. Check my role position."
+      "notKickable": "I cannot kick this user."
+    },
+    "mute": {
+      "notMuted": "This user is not muted.",
+      "auditReason": "Mute removed by command",
+      "permanent": "Permanent"
+    },
+    "unmute": {
+      "roleMissing": "Muted role is not configured."
+    },
+    "timeout": {
+      "tooLong": "Timeout cannot be longer than 28 days."
+    },
+    "case": {
+      "notFound": "Case #{{case}} not found.",
+      "invalidNumber": "Please provide a valid case number.",
+      "removed": "Case #{{case}} has been removed.",
+      "title": "Case #{{case}}",
+      "noReason": "No reason provided"
     },
     "silentban": {
-      "self": "`❌` You can't silent ban yourself.",
-      "bot": "`❌` You can't silent ban bots.",
-      "specifyUser": "`❌` You must specify a user.",
-      "addError": "`❌` Error applying the silent ban.",
-      "removeError": "`❌` Error removing the silent ban.",
-      "listError": "`❌` Error listing silent bans.",
-      "noBans": "`📋` No active silent bans."
+      "self": "You cannot silent-ban yourself.",
+      "bot": "You cannot silent-ban a bot.",
+      "noBans": "There are no active silent-bans.",
+      "never": "Never"
     },
-    "lockdown": {
-      "locked": "{{emoji}} <#{{channel}}> has been locked.",
-      "unlocked": "{{emoji}} <#{{channel}}> has been unlocked.",
-      "lockedMsg": "{{emoji}} This channel has been locked.",
-      "unlockedMsg": "{{emoji}} This channel has been unlocked."
-    },
-    "slowmode": {
-      "success": "{{emoji}} Slowmode set to **{{seconds}}s** in <#{{channel}}>. ",
-      "disabled": "{{emoji}} Slowmode disabled in <#{{channel}}>."
-    },
-    "history": {
-      "specifyUser": "`❌` Please specify a user or user ID.",
-      "noSanctions": "`📋` No sanctions found for this user.",
-      "title": "Sanction history for <@{{user}}>"
+    "threshold": {
+      "errors": {
+        "thresholdsDisabled": "Automated thresholds are disabled in this server."
+      },
+      "autoReason": "Automated action ({{count}} sanctions)"
     }
   }
 }

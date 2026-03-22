@@ -1,45 +1,28 @@
 {
-  "footer": "Powered by Caramel • {{version}}",
-  "modLog": {
-    "warn": "Warning",
-    "mute": "Mute",
-    "ban": "Ban",
-    "kick": "Kick",
-    "timeout": "Timeout",
-    "unmute": "Unmute",
-    "user": "User",
-    "moderator": "Moderator",
-    "reason": "Reason",
-    "noReason": "No reason provided",
-    "duration": "Duration",
-    "totalWarns": "Total warnings"
-  },
-  "modDM": {
-    "warn": "You have received a **warning** in **{{guild}}**.",
-    "mute": "You have been **muted** in **{{guild}}**.",
-    "ban": "You have been **banned** from **{{guild}}**.",
-    "kick": "You have been **kicked** from **{{guild}}**.",
-    "timeout": "You have been **timed out** in **{{guild}}**.",
-    "unmute": "Your timeout in **{{guild}}** has been lifted.",
-    "footer": "If you believe this was a mistake, please contact the server staff."
-  },
+  "cancelled": "{{cross}} Action cancelled.",
+  "timeout": "{{cross}} Time expired.",
+  "error": "{{error}} An unexpected error occurred.",
+  "success": "{{check}} Operation completed successfully!",
   "settings": {
-    "title": "{{name}} Configuration",
-    "setupTitle": "{{name}} Setup",
+    "title": "{{gear}} {{name}} Settings",
     "enabled": "Enabled",
     "disabled": "Disabled",
-    "notSet": "Not set",
+    "notSet": "Not Set",
     "vanity": {
       "keyword": "Keyword",
-      "role": "Role",
-      "channel": "Channel",
-      "usersWithVanity": "Users with vanity"
+      "role": "Reward Role",
+      "channel": "Log Channel",
+      "usersWithVanity": "Users with Vanity"
     },
     "mod": {
-      "logChannel": "Log Channel",
-      "mutedRole": "Muted Role"
+      "logChannel": "Mod Logs",
+      "mutedRole": "Muted Role",
+      "thresholds": "Thresholds",
+      "modeModular": "Modular",
+      "modeAllActions": "All Actions"
     },
-    "footerEnable": "Use </module enable:1475038787796205760> to activate this module.",
-    "footerDisable": "Use </module disable:1475038787796205760> to deactivate this module."
+    "automod": {
+      "rulesCount": "Active Rules"
+    }
   }
 }

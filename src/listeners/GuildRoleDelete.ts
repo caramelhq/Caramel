@@ -4,40 +4,55 @@ import { Events, Role } from 'discord.js';
 import { prisma } from '../database/db';
 import { CacheManager } from '../database/CacheManager';
 
-
-// Guild role delete listener ──────────────────
-
+/**
+ * Ghost Role Cleanup:
+ * If a role configured as 'mutedRoleId' or 'vanityRoleId' is deleted,
+ * we clear it from the database and sync the cache.
+ */
 @ApplyOptions<Listener.Options>({
     event: Events.GuildRoleDelete
 })
 export class GuildRoleDeleteListener extends Listener {
     public async run(role: Role) {
-        const guildId = role.guild.id;
+        const roleId = role.id;
 
         try {
-            const config = await prisma.guildConfig.findUnique({ where: { guildId } });
-            if (!config) return;
+            // Find the guild where this role was configured
+            const affectedGuild = await prisma.guildConfig.findFirst({
+                where: {
+                    OR: [
+                        { mutedRoleId: roleId },
+                        { vanityRoleId: roleId }
+                    ]
+                }
+            });
+
+            if (!affectedGuild) return;
 
             const update: Record<string, any> = {};
 
-            if (config.mutedRoleId === role.id) {
+            if (affectedGuild.mutedRoleId === roleId) {
                 update.mutedRoleId = null;
-                update.modModule   = false;
-                this.container.logger.info(`[ROLE-DELETE] Muted role deleted in ${role.guild.name}, clearing from config`);
+                // If the required role is gone, we might want to disable the module or just clear the ID.
+                // The user requested setting the field to null.
+                this.container.logger.info(`[ROLE-DELETE] Muted role ${roleId} deleted in ${role.guild.name}, clearing from config`);
             }
 
-            if (config.vanityRoleId === role.id) {
+            if (affectedGuild.vanityRoleId === roleId) {
                 update.vanityRoleId = null;
-                update.vanityModule = false;
-                this.container.logger.info(`[ROLE-DELETE] Vanity role deleted in ${role.guild.name}, clearing from config`);
+                this.container.logger.info(`[ROLE-DELETE] Vanity role ${roleId} deleted in ${role.guild.name}, clearing from config`);
             }
 
             if (Object.keys(update).length === 0) return;
 
-            const updated = await prisma.guildConfig.update({ where: { guildId }, data: update });
-            await CacheManager.syncGuild(guildId, updated);
+            const updated = await prisma.guildConfig.update({ 
+                where: { guildId: affectedGuild.guildId }, 
+                data: update 
+            });
+            
+            await CacheManager.syncGuild(affectedGuild.guildId, updated);
         } catch (error) {
-            this.container.logger.error(`[ROLE-DELETE] Error handling role deletion in ${role.guild.name}:`, error);
+            this.container.logger.error(`[ROLE-DELETE] Error handling role deletion ${roleId}:`, error);
         }
     }
 }

@@ -27,6 +27,8 @@ export class CommandDeniedListener extends Listener {
     }
 }
 
+import { CaramelUserError } from '../../lib/structures/Errors';
+
 export class CommandErrorListener extends Listener {
     public constructor(context: Listener.LoaderContext, options: Listener.Options) {
         super(context, {
@@ -36,6 +38,9 @@ export class CommandErrorListener extends Listener {
     }
 
     public async run(error: any, payload: MessageCommandErrorPayload) {
+        // Ignore user errors in debug logs to avoid stack trace noise
+        if (error instanceof CaramelUserError) return;
+        
         this.container.logger.error(`[DEBUG] Command error: ${payload.command.name}`, error);
     }
 }

@@ -2,17 +2,19 @@ import { Command, Args } from '@sapphire/framework';
 import { ApplyOptions } from '@sapphire/decorators';
 import { PermissionFlagsBits, GuildMember, Message } from 'discord.js';
 import { resolveKey } from '@sapphire/plugin-i18next';
-import { requireModConfig, validateMod, sendModDM, sendModLog, parseDuration } from '../../lib/utils/ModUtils';
+import { requireModConfig, requireMutedRole, validateMod, sendModDM, sendModLog, parseDuration } from '../../lib/utils/ModUtils';
 import { prisma } from '../../database/db';
-import { CacheManager } from '../../database/CacheManager';
 import { Emojis } from '../../lib/constants/emojis';
-import { getMessageLayout } from '../../lib/layouts/defaultLayout';
-import { getStatusUpdateLayout, getCancelledLayout, getTimeoutLayout } from '../../lib/layouts/modCommandLayouts';
+import { getStaffConfirmationLayout } from '../../lib/layouts/modCommandLayouts';
+import { CaramelUserError } from '../../lib/structures/Errors';
 
 @ApplyOptions<Command.Options>({
+    name: 'mute',
     description: 'Mute a member (role-based)',
 })
 export class MuteCommand extends Command {
+    public readonly usage = 'modcommands:mod.usage.mute';
+
     public override registerApplicationCommands(registry: Command.Registry) {
         registry.registerChatInputCommand((builder) =>
             builder
@@ -31,76 +33,76 @@ export class MuteCommand extends Command {
         const reason = interaction.options.getString('reason') ?? null;
         await interaction.deferReply({ ephemeral: false });
 
-        if (!target) return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'errors:memberNotFound')) });
-        const err = await validateMod(interaction, target);
-        if (err) return interaction.editReply({ ...getMessageLayout(err) });
+        if (!target) throw new CaramelUserError('errors:memberNotFound');
         
-        const isAllowed = await requireModConfig(interaction);
-        if (!isAllowed) return;
-
-        const { mutedRoleId } = await CacheManager.getModConfig(interaction.guildId!);
-        if (!mutedRoleId) return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'modcommands:mod.mute.roleMissing')) });
+        await validateMod(interaction, target);
+        await requireModConfig(interaction.guildId!);
+        const mutedRoleId = await requireMutedRole(interaction.guildId!);
 
         let parsed = null;
         if (durationInput) {
             parsed = parseDuration(durationInput);
-            if (!parsed) return interaction.editReply({ ...getMessageLayout('`❌` Invalid duration. Use: `1d`, `2h`, `30m`, or combined like `1d2h30m`.') });
+            if (!parsed) throw new CaramelUserError('errors:mod_invalidDuration');
         }
 
-        try {
-            await target.roles.add(mutedRoleId, reason ?? undefined);
-            await prisma.activeMute.upsert({
-                where: { mute_guild_user_unique: { guildId: interaction.guildId!, userId: target.id } },
-                create: { guildId: interaction.guildId!, userId: target.id, moderatorId: interaction.user.id, reason, expiresAt: parsed?.expiresAt ?? null },
-                update: { moderatorId: interaction.user.id, reason, expiresAt: parsed?.expiresAt ?? null },
-            });
-            await sendModDM({ userId: target.id, action: 'mute', guildName: interaction.guild!.name, reason, duration: parsed?.formatted ?? 'Permanent' });
-            await sendModLog({ guildId: interaction.guildId!, action: 'mute', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, reason, duration: parsed?.formatted ?? 'Permanent', expiresAt: parsed?.expiresAt ?? null });
+        const permanentLabel = await resolveKey(interaction, 'modcommands:mod.mute.permanent');
 
-            const content = await resolveKey(interaction, 'modcommands:mod.mute.success', { emoji: Emojis.enabled_setting_emoji, user: target.user.tag, duration: parsed ? ` for **${parsed.formatted}**` : ' permanently' });
-            return interaction.editReply({ ...getMessageLayout(content) });
-        } catch (error) {
-            this.container.logger.error(`[MOD MUTE]`, error);
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'errors:unexpected')) });
-        }
+        await target.roles.add(mutedRoleId, reason ?? undefined);
+        await prisma.activeMute.upsert({
+            where: { mute_guild_user_unique: { guildId: interaction.guildId!, userId: target.id } },
+            create: { guildId: interaction.guildId!, userId: target.id, moderatorId: interaction.user.id, reason, expiresAt: parsed?.expiresAt ?? null },
+            update: { moderatorId: interaction.user.id, reason, expiresAt: parsed?.expiresAt ?? null },
+        });
+        await sendModDM({ userId: target.id, moderatorId: interaction.user.id, action: 'mute', guild: interaction.guild!, reason, duration: parsed?.formatted ?? permanentLabel });
+        const caseNumber = await sendModLog({ guildId: interaction.guildId!, action: 'mute', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, guild: interaction.guild!, reason, duration: parsed?.formatted ?? permanentLabel, expiresAt: parsed?.expiresAt ?? null });
+
+        const successMsg = await resolveKey(interaction, 'modcommands:sanctions.confirmations.mute', { 
+            emoji: Emojis.mute_emoji, 
+            user: target.toString(), 
+            userId: target.id 
+        });
+
+        return interaction.editReply(getStaffConfirmationLayout({
+            content: successMsg,
+            caseId: caseNumber ?? 0
+        }));
     }
 
     public async messageRun(message: Message, args: Args) {
-        const target = await args.pick('member').catch(() => null) as GuildMember | null;
+        const target = await args.pick('member');
         const durationInput = await args.pick('string').catch(() => null);
         const reason = await args.rest('string').catch(() => null);
 
-        if (!target) return message.reply({ ...getMessageLayout(await resolveKey(message, 'errors:memberNotFound')) });
-        const err = await validateMod(message, target);
-        if (err) return message.reply({ ...getMessageLayout(err) });
-
-        const isAllowed = await requireModConfig(message);
-        if (!isAllowed) return;
-
-        const { mutedRoleId } = await CacheManager.getModConfig(message.guildId!);
-        if (!mutedRoleId) return message.reply({ ...getMessageLayout(await resolveKey(message, 'modcommands:mod.mute.roleMissing')) });
+        await validateMod(message, target);
+        await requireModConfig(message.guildId!);
+        const mutedRoleId = await requireMutedRole(message.guildId!);
 
         let parsed = null;
         if (durationInput) {
             parsed = parseDuration(durationInput);
-            if (!parsed) return message.reply({ ...getMessageLayout('`❌` Invalid duration. Use: `1d`, `2h`, `30m`, or combined like `1d2h30m`.') });
+            if (!parsed) throw new CaramelUserError('errors:mod_invalidDuration');
         }
 
-        try {
-            await target.roles.add(mutedRoleId, reason ?? undefined);
-            await prisma.activeMute.upsert({
-                where: { mute_guild_user_unique: { guildId: message.guildId!, userId: target.id } },
-                create: { guildId: message.guildId!, userId: target.id, moderatorId: message.author.id, reason, expiresAt: parsed?.expiresAt ?? null },
-                update: { moderatorId: message.author.id, reason, expiresAt: parsed?.expiresAt ?? null },
-            });
-            await sendModDM({ userId: target.id, action: 'mute', guildName: message.guild!.name, reason, duration: parsed?.formatted ?? 'Permanent' });
-            await sendModLog({ guildId: message.guildId!, action: 'mute', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, reason, duration: parsed?.formatted ?? 'Permanent', expiresAt: parsed?.expiresAt ?? null });
+        const permanentLabel = await resolveKey(message, 'modcommands:mod.mute.permanent');
 
-            const content = await resolveKey(message, 'modcommands:mod.mute.success', { emoji: Emojis.enabled_setting_emoji, user: target.user.tag, duration: parsed ? ` for **${parsed.formatted}**` : ' permanently' });
-            return message.reply({ ...getMessageLayout(content) });
-        } catch (error) {
-            this.container.logger.error(`[MOD MUTE]`, error);
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'errors:unexpected')) });
-        }
+        await target.roles.add(mutedRoleId, reason ?? undefined);
+        await prisma.activeMute.upsert({
+            where: { mute_guild_user_unique: { guildId: message.guildId!, userId: target.id } },
+            create: { guildId: message.guildId!, userId: target.id, moderatorId: message.author.id, reason, expiresAt: parsed?.expiresAt ?? null },
+            update: { moderatorId: message.author.id, reason, expiresAt: parsed?.expiresAt ?? null },
+        });
+        await sendModDM({ userId: target.id, moderatorId: message.author.id, action: 'mute', guild: message.guild!, reason, duration: parsed?.formatted ?? permanentLabel });
+        const caseNumber = await sendModLog({ guildId: message.guildId!, action: 'mute', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, guild: message.guild!, reason, duration: parsed?.formatted ?? permanentLabel, expiresAt: parsed?.expiresAt ?? null });
+
+        const successMsg = await resolveKey(message, 'modcommands:sanctions.confirmations.mute', { 
+            emoji: Emojis.mute_emoji, 
+            user: target.toString(), 
+            userId: target.id 
+        });
+
+        return message.reply(getStaffConfirmationLayout({
+            content: successMsg,
+            caseId: caseNumber ?? 0
+        }));
     }
 }

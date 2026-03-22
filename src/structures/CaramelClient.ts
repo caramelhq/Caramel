@@ -4,11 +4,15 @@ import { ActivityType, GatewayIntentBits } from 'discord.js';
 import pino from 'pino';
 import { join } from 'path';
 import { CacheManager } from '../database/CacheManager';
+import { CaramelUserError } from '../lib/structures/Errors';
+import { MusicManager } from '../lib/structures/MusicManager';
 
 
 // Caramel client ──────────────────
 
 export class CaramelClient extends SapphireClient {
+    public music: MusicManager;
+
     public constructor() {
 
         // Pino logger setup ──────────
@@ -54,8 +58,12 @@ export class CaramelClient extends SapphireClient {
                 ]
             },
             defaultPrefix: process.env.PREFIX ?? 'c!',
-            fetchPrefix: () => process.env.PREFIX ?? 'c!',
+            fetchPrefix: async (message) => {
+                if (!message.guild) return process.env.PREFIX ?? 'c!';
+                return await CacheManager.getPrefix(message.guild.id);
+            },
             loadMessageCommandListeners: true,
+            disableInternalMessages: true,
             baseUserDirectory: join(__dirname, '..'),
             i18n: {
                 fetchLanguage: async (context: InternationalizationContext) => {
@@ -89,7 +97,14 @@ export class CaramelClient extends SapphireClient {
                     },
                     debug: (message: any) => pinoLogger.debug(message),
                     error: (...args: any[]) => {
-                        const formatted = args.map(arg => arg instanceof Error ? (arg.stack ?? arg.message) : arg).join(' ');
+                        // Filter out CaramelUserError to avoid stack trace noise in the console
+                        if (args.some(arg => arg instanceof CaramelUserError || (arg && typeof arg === 'object' && 'name' in arg && arg.name === 'UserError'))) return;
+                        
+                        const formatted = args.map(arg => {
+                            if (arg instanceof Error) return arg.stack ?? arg.message;
+                            if (typeof arg === 'object') return JSON.stringify(arg, null, 2);
+                            return arg;
+                        }).join(' ');
                         pinoLogger.error(formatted);
                     },
                     warn:  (...args: any[]) => pinoLogger.warn(args.join(' ')),
@@ -100,6 +115,9 @@ export class CaramelClient extends SapphireClient {
                 } as any
             }
         } as any);
+
+        this.music = new MusicManager(this);
+        container.music = this.music;
     }
 
 

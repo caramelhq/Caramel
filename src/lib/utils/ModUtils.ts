@@ -1,86 +1,111 @@
 import { Guild, TextChannel, GuildMember, Message } from 'discord.js';
 import { resolveKey } from '@sapphire/plugin-i18next';
 import { container, Command } from '@sapphire/framework';
-import { getMessageLayout } from '../layouts/defaultLayout';
+import { getSanctionLayout } from '../layouts/modCommandLayouts';
+import { CaramelUserError } from '../structures/Errors';
+
+export type ModAction = 'warn' | 'mute' | 'ban' | 'tempban' | 'softban' | 'kick' | 'timeout' | 'unmute' | 'unban';
 
 import { prisma } from '../../database/db';
 import { CacheManager } from '../../database/CacheManager';
-import { getModLogLayout, getModDMLayout, type ModAction } from './layouts';
-
-
 
 // Moderation helpers ──────────────────
 
 /**
  * Validates if the target can be moderated by the invoker
  */
-export async function validateMod(target: Command.ChatInputCommandInteraction | Message, member: GuildMember): Promise<string | null> {
+export async function validateMod(target: Command.ChatInputCommandInteraction | Message, member: GuildMember): Promise<void> {
     const invoker = (target instanceof Message) ? target.member : target.member as GuildMember;
-    if (!invoker) return 'errors:unexpected';
+    if (!invoker) throw new CaramelUserError('errors:unexpected');
 
-    if (member.id === invoker.id) return 'errors:mod.self';
-    if (member.id === container.client.user?.id) return 'errors:mod.bot';
+    if (member.id === invoker.id) throw new CaramelUserError('errors:mod_self');
+    if (member.id === container.client.user?.id) throw new CaramelUserError('errors:mod_bot');
     
-    // Higher role check
     if (member.roles.highest.position >= invoker.roles.highest.position && invoker.guild.ownerId !== invoker.id) {
-        return 'errors:mod.hierarchy';
+        throw new CaramelUserError('errors:mod_hierarchy');
     }
 
-    if (!member.manageable) return 'errors:mod.notManageable';
-
-    return null;
+    if (!member.manageable) throw new CaramelUserError('errors:mod_notManageable');
 }
 
-
-/**
- * Ensures the moderation module is enabled and has a log channel
- */
-export async function requireModConfig(target: Command.ChatInputCommandInteraction | Message): Promise<boolean> {
-    const guildId = target.guildId!;
+export async function requireModConfig(guildId: string): Promise<void> {
     const modConfig = await CacheManager.getModConfig(guildId);
 
-    if (!modConfig.modModule) {
-        const content = await resolveKey(target, 'errors:mod.moduleDisabled');
-        if (target instanceof Message) await target.reply({ ...getMessageLayout(content) });
-        else await (target as Command.ChatInputCommandInteraction).editReply({ ...getMessageLayout(content) });
-        return false;
-    }
+    if (!modConfig.modModule) throw new CaramelUserError('errors:mod_moduleDisabled');
+    if (!modConfig.modLogChannelId) throw new CaramelUserError('errors:mod_noLogChannel');
 
-    if (!modConfig.modLogChannelId) {
-        const content = await resolveKey(target, 'errors:mod.noLogChannel');
-        if (target instanceof Message) await target.reply({ ...getMessageLayout(content) });
-        else await (target as Command.ChatInputCommandInteraction).editReply({ ...getMessageLayout(content) });
-        return false;
-    }
-
-    return true;
+    const channel = await container.client.channels.fetch(modConfig.modLogChannelId).catch(() => null);
+    if (!channel) throw new CaramelUserError('errors:mod_logChannelNotFound');
 }
 
+export async function requireMutedRole(guildId: string): Promise<string> {
+    const modConfig = await CacheManager.getModConfig(guildId);
+    if (!modConfig.mutedRoleId) throw new CaramelUserError('errors:mod_noMutedRole');
 
-// Sends a DM to the sanctioned user ──────────
+    const guild = await container.client.guilds.fetch(guildId).catch(() => null);
+    const role = await guild?.roles.fetch(modConfig.mutedRoleId).catch(() => null);
+
+    if (!role) throw new CaramelUserError('errors:mod_mutedRoleNotFound');
+    return role.id;
+}
+
+export async function requireThresholds(guildId: string): Promise<void> {
+    await requireModConfig(guildId);
+    const modConfig = await CacheManager.getModConfig(guildId);
+    if (!modConfig.modThresholdsEnabled) throw new CaramelUserError('modcommands:mod.threshold.errors.thresholdsDisabled');
+}
+
+async function getLabels(guild: Guild, type: string) {
+    if (!guild) {
+        container.logger.error(`[MOD_UTILS] getLabels received undefined guild!`);
+        return {
+            typeLabel: type, targetLabel: 'Target', modLabel: 'Action by',
+            reasonLabel: 'Reason', durationLabel: 'Duration', permanent: 'Permanent'
+        };
+    }
+    const ns = 'modcommands:sanctions';
+    return {
+        typeLabel:     await resolveKey(guild, `${ns}.types.${type}`).catch(() => type),
+        targetLabel:   await resolveKey(guild, `${ns}.fields.target`).catch(() => 'Target'),
+        modLabel:      await resolveKey(guild, `${ns}.fields.staff`).catch(() => 'Action by'),
+        reasonLabel:   await resolveKey(guild, `${ns}.fields.reason`).catch(() => 'Reason'),
+        durationLabel: await resolveKey(guild, `${ns}.fields.duration`).catch(() => 'Duration'),
+        permanent:     await resolveKey(guild, `${ns}.fields.permanent`).catch(() => 'Permanent')
+    };
+}
 
 export async function sendModDM(data: {
     userId: string,
+    moderatorId: string,
     action: ModAction,
-    guildName: string,
+    guild: Guild,
     reason?: string | null,
     duration?: string | null
 }) {
     try {
         const user = await container.client.users.fetch(data.userId);
-        await user.send({ ...getModDMLayout({
-            action: data.action,
-            guildName: data.guildName,
-            reason: data.reason,
-            duration: data.duration
+        const labels = await getLabels(data.guild, data.action);
+
+        await user.send({ ...getSanctionLayout({
+            type: data.action as any,
+            targetId: data.userId,
+            moderatorId: data.moderatorId,
+            reason: data.reason ?? 'No reason provided',
+            duration: data.duration ?? null,
+            labels: {
+                typeLabel: labels.typeLabel,
+                targetLabel: labels.targetLabel,
+                modLabel: labels.modLabel,
+                reasonLabel: labels.reasonLabel,
+                durationLabel: labels.durationLabel,
+                permanent: labels.permanent
+            },
+            createdAt: new Date()
         }) });
     } catch {
         container.logger.warn(`[MOD_UTILS] Could not send DM to ${data.userId}`);
     }
 }
-
-
-// Saves the sanction to ModLog and sends embed to the log channel ──────────
 
 export async function sendModLog(data: {
     guildId: string,
@@ -88,12 +113,22 @@ export async function sendModLog(data: {
     userId: string,
     userTag: string,
     moderatorId: string,
+    guild: Guild,
     reason?: string | null,
     duration?: string | null,
     expiresAt?: Date | null,
-    warnCount?: number
-}) {
+    isAutomatic?: boolean
+}): Promise<number | null> {
     try {
+        const config = await prisma.guildConfig.update({
+            where: { guildId: data.guildId },
+            data: { caseCount: { increment: 1 } },
+            select: { caseCount: true }
+        });
+
+        const caseNumber = config.caseCount;
+        const now = new Date();
+
         await prisma.modLog.create({
             data: {
                 guildId:     data.guildId,
@@ -103,57 +138,164 @@ export async function sendModLog(data: {
                 reason:      data.reason ?? null,
                 duration:    data.duration ?? null,
                 expiresAt:   data.expiresAt ?? null,
+                caseNumber:  caseNumber,
+                isAutomatic: data.isAutomatic ?? false,
+                createdAt:   now
             }
         });
 
-        const { modLogChannelId } = await CacheManager.getModConfig(data.guildId);
-        if (!modLogChannelId) return;
+        const modConfig = await CacheManager.getModConfig(data.guildId);
+        if (modConfig.modLogChannelId) {
+            const channel = await container.client.channels.fetch(modConfig.modLogChannelId).catch(() => null) as TextChannel | null;
+            if (channel) {
+                const labels = await getLabels(data.guild, data.action);
+                const layout = getSanctionLayout({
+                    type: data.action as any,
+                    targetId: data.userId,
+                    moderatorId: data.moderatorId,
+                    reason: data.reason ?? 'No reason provided',
+                    duration: data.duration ?? null,
+                    labels: {
+                        typeLabel: labels.typeLabel,
+                        targetLabel: labels.targetLabel,
+                        modLabel: labels.modLabel,
+                        reasonLabel: labels.reasonLabel,
+                        durationLabel: labels.durationLabel,
+                        permanent: labels.permanent
+                    },
+                    caseId: caseNumber,
+                    createdAt: now
+                });
 
-        const channel = await container.client.channels.fetch(modLogChannelId).catch(() => null) as TextChannel | null;
-        if (!channel) return;
+                // Webhook Logic
+                let webhook = (await channel.fetchWebhooks().catch(() => null))?.find(
+                    wh => wh.owner?.id === container.client.user?.id && wh.name === 'Caramel'
+                );
 
-        await channel.send({ ...getModLogLayout(data) });
+                if (!webhook) {
+                    webhook = await channel.createWebhook({
+                        name: 'Caramel',
+                        avatar: container.client.user?.displayAvatarURL(),
+                        reason: 'Caramel Mod Logs setup'
+                    }).catch(() => undefined);
+                }
+
+                if (webhook) {
+                    await webhook.send({
+                        ...layout,
+                        username: 'Caramel',
+                        avatarURL: container.client.user?.displayAvatarURL()
+                    });
+                } else {
+                    // Fallback if webhook creation fails
+                    await channel.send(layout);
+                }
+            }
+        }
+        return caseNumber;
     } catch (error) {
         container.logger.error(`[MOD_UTILS] Failed to send mod log:`, error);
+        return null;
     }
 }
-
-
-// Checks warn thresholds and applies automatic sanction if needed ──────────
 
 export async function checkThresholds(data: {
     guildId: string,
     userId: string,
     userTag: string,
     moderatorId: string,
-    guild: Guild
+    guild: Guild,
+    actionTriggered: ModAction 
 }) {
     try {
-        const { modThresholdsEnabled, muteThreshold, banThreshold } = await CacheManager.getModConfig(data.guildId);
-        if (!modThresholdsEnabled) return;
+        const config = await CacheManager.getModConfig(data.guildId);
+        if (!config.modThresholdsEnabled) return;
 
-        const warnCount = await prisma.modLog.count({
-            where: { guildId: data.guildId, userId: data.userId, action: 'warn' }
-        });
+        const dateLimit = config.warnExpirationDays > 0 
+            ? new Date(Date.now() - (config.warnExpirationDays * 24 * 60 * 60 * 1000))
+            : new Date(0);
 
-        if (warnCount >= banThreshold) {
-            const member = await data.guild.members.fetch(data.userId).catch(() => null);
-            if (!member) return;
+        let activeRule = null;
+        let currentCount = 0;
 
-            await sendModDM({ userId: data.userId, action: 'ban', guildName: data.guild.name, reason: `Automatic ban: reached ${banThreshold} warnings` });
-            await member.ban({ reason: `Automatic ban: reached ${banThreshold} warnings` });
-            await sendModLog({ ...data, action: 'ban', reason: `Automatic ban: reached ${banThreshold} warnings`, warnCount });
+        if (config.thresholdMode === 'all_actions') {
+            currentCount = await prisma.modLog.count({
+                where: { 
+                    guildId: data.guildId, 
+                    userId: data.userId, 
+                    isAutomatic: false,
+                    action: { in: ['warn', 'mute', 'timeout', 'kick', 'softban', 'ban', 'tempban'] },
+                    createdAt: { gte: dateLimit }
+                }
+            });
+            activeRule = await prisma.modThreshold.findUnique({
+                where: { guild_trigger_threshold_unique: { guildId: data.guildId, triggerType: 'all', threshold: currentCount } }
+            });
+        } else {
+            currentCount = await prisma.modLog.count({
+                where: { 
+                    guildId: data.guildId, 
+                    userId: data.userId, 
+                    isAutomatic: false,
+                    action: data.actionTriggered,
+                    createdAt: { gte: dateLimit }
+                }
+            });
+            activeRule = await prisma.modThreshold.findUnique({
+                where: { guild_trigger_threshold_unique: { guildId: data.guildId, triggerType: data.actionTriggered, threshold: currentCount } }
+            });
+        }
 
-        } else if (warnCount >= muteThreshold) {
-            await applyMute({ ...data, reason: `Automatic timeout: reached ${muteThreshold} warnings`, duration: null });
+        if (!activeRule) return;
+        const member = await data.guild.members.fetch(data.userId).catch(() => null);
+        if (!member && activeRule.action !== 'unban') return;
+
+        const reason = await resolveKey(data.guild, 'modcommands:mod.threshold.autoReason', { count: currentCount });
+
+        switch (activeRule.action) {
+            case 'mute':
+            case 'timeout':
+                if (!member?.manageable) return;
+                const duration = activeRule.duration ? parseDuration(activeRule.duration) : null;
+                await applyMute({ ...data, reason, duration: duration?.formatted, expiresAt: duration?.expiresAt, isAutomatic: true });
+                break;
+            case 'kick':
+                if (!member?.kickable) return;
+                await sendModDM({ userId: data.userId, moderatorId: container.client.user!.id, action: 'kick', guild: data.guild, reason });
+                await member.kick(reason);
+                await sendModLog({ ...data, action: 'kick', reason, isAutomatic: true });
+                break;
+            case 'softban':
+                if (!member?.bannable) return;
+                await sendModDM({ userId: data.userId, moderatorId: container.client.user!.id, action: 'softban', guild: data.guild, reason });
+                await member.ban({ deleteMessageSeconds: 604800, reason });
+                await data.guild.members.unban(data.userId, 'Softban: clear messages');
+                await sendModLog({ ...data, action: 'softban', reason, isAutomatic: true });
+                break;
+            case 'tempban':
+                if (!member?.bannable) return;
+                const banDuration = activeRule.duration ? parseDuration(activeRule.duration) : null;
+                if (!banDuration) return;
+                await sendModDM({ userId: data.userId, moderatorId: container.client.user!.id, action: 'tempban', guild: data.guild, reason, duration: banDuration.formatted });
+                const caseNum = await sendModLog({ ...data, action: 'tempban', reason, duration: banDuration.formatted, expiresAt: banDuration.expiresAt, isAutomatic: true });
+                await prisma.activeTempBan.upsert({
+                    where:  { tempban_guild_user_unique: { guildId: data.guildId, userId: data.userId } },
+                    create: { guildId: data.guildId, userId: data.userId, moderatorId: container.client.user!.id, reason, expiresAt: banDuration.expiresAt, caseNumber: caseNum ?? 0 },
+                    update: { moderatorId: container.client.user!.id, reason, expiresAt: banDuration.expiresAt, caseNumber: caseNum ?? 0 },
+                });
+                await member.ban({ reason });
+                break;
+            case 'ban':
+                if (!member?.bannable) return;
+                await sendModDM({ userId: data.userId, moderatorId: container.client.user!.id, action: 'ban', guild: data.guild, reason });
+                await member.ban({ reason });
+                await sendModLog({ ...data, action: 'ban', reason, isAutomatic: true });
+                break;
         }
     } catch (error) {
         container.logger.error(`[MOD_UTILS] Threshold check failed:`, error);
     }
 }
-
-
-// Applies a timeout and saves it to ActiveMute ──────────
 
 export async function applyMute(data: {
     guildId: string,
@@ -163,54 +305,82 @@ export async function applyMute(data: {
     guild: Guild,
     reason?: string | null,
     duration?: string | null,
-    expiresAt?: Date | null
+    expiresAt?: Date | null,
+    isAutomatic?: boolean
 }) {
     try {
         const member = await data.guild.members.fetch(data.userId).catch(() => null);
         if (!member) return;
 
-        await prisma.activeMute.upsert({
-            where:  { mute_guild_user_unique: { guildId: data.guildId, userId: data.userId } },
-            create: { guildId: data.guildId, userId: data.userId, moderatorId: data.moderatorId, reason: data.reason ?? null, expiresAt: data.expiresAt ?? null },
-            update: { moderatorId: data.moderatorId, reason: data.reason ?? null, expiresAt: data.expiresAt ?? null },
+        const caseNumber = await sendModLog({ 
+            guildId: data.guildId, action: 'timeout', userId: data.userId, userTag: data.userTag, moderatorId: data.moderatorId, guild: data.guild, reason: data.reason, duration: data.duration, expiresAt: data.expiresAt, isAutomatic: data.isAutomatic 
         });
 
-        const timeoutMs = data.expiresAt
-            ? data.expiresAt.getTime() - Date.now()
-            : 28 * 24 * 60 * 60 * 1000;
+        await prisma.activeMute.upsert({
+            where:  { mute_guild_user_unique: { guildId: data.guildId, userId: data.userId } },
+            create: { guildId: data.guildId, userId: data.userId, moderatorId: data.moderatorId, reason: data.reason ?? null, expiresAt: data.expiresAt ?? null, caseNumber: caseNumber ?? 0 },
+            update: { moderatorId: data.moderatorId, reason: data.reason ?? null, expiresAt: data.expiresAt ?? null, caseNumber: caseNumber ?? 0 },
+        });
 
+        const timeoutMs = data.expiresAt ? data.expiresAt.getTime() - Date.now() : 28 * 24 * 60 * 60 * 1000;
         await member.timeout(timeoutMs, data.reason ?? undefined);
-        await sendModDM({ userId: data.userId, action: 'timeout', guildName: data.guild.name, reason: data.reason, duration: data.duration });
-        await sendModLog({ guildId: data.guildId, action: 'timeout', userId: data.userId, userTag: data.userTag, moderatorId: data.moderatorId, reason: data.reason, duration: data.duration, expiresAt: data.expiresAt });
+        await sendModDM({ userId: data.userId, moderatorId: data.moderatorId, action: 'timeout', guild: data.guild, reason: data.reason, duration: data.duration });
+
+        if (!data.isAutomatic) {
+            await checkThresholds({ guildId: data.guildId, userId: data.userId, userTag: data.userTag, moderatorId: data.moderatorId, guild: data.guild, actionTriggered: 'timeout' });
+        }
     } catch (error) {
         container.logger.error(`[MOD_UTILS] Apply mute failed:`, error);
     }
 }
 
+export function parseSlowmode(input: string): number | null {
+    const lower = input.toLowerCase().trim();
+    if (lower === '0' || lower === 'off') return 0;
+    const regex = /^(\d+)(h|m|s)?$/i;
+    const match = lower.match(regex);
+    if (!match) return null;
+    const value = parseInt(match[1]);
+    const unit = match[2];
+    if (!unit) return value;
+    switch (unit) {
+        case 'h': return value * 3600;
+        case 'm': return value * 60;
+        case 's': return value;
+        default: return null;
+    }
+}
 
-// Parses a duration string to milliseconds and expiry date ──────────
-// Format: 1d, 2h, 30m, or combined like 1d2h30m
+export function formatSeconds(seconds: number): string {
+    if (seconds === 0) return '0s';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    const parts = [];
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+    return parts.join(' ');
+}
 
 export function parseDuration(input: string): { ms: number, expiresAt: Date, formatted: string } | null {
     const regex = /(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?/i;
     const match = input.match(regex);
     if (!match || (!match[1] && !match[2] && !match[3])) return null;
-
     const days    = parseInt(match[1] ?? '0');
     const hours   = parseInt(match[2] ?? '0');
     const minutes = parseInt(match[3] ?? '0');
-
     const ms = (days * 86400 + hours * 3600 + minutes * 60) * 1000;
     if (ms <= 0) return null;
-
     const parts = [];
     if (days)    parts.push(`${days}d`);
     if (hours)   parts.push(`${hours}h`);
     if (minutes) parts.push(`${minutes}m`);
+    return { ms, expiresAt: new Date(Date.now() + ms), formatted: parts.join(' ') };
+}
 
-    return {
-        ms,
-        expiresAt: new Date(Date.now() + ms),
-        formatted: parts.join(' ')
-    };
+export function cleanAndTokenize(text: string): string[] {
+    const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const cleaned = normalized.replace(/[^a-z0-9\s]/g, ' ');
+    return cleaned.split(/\s+/).filter(token => token.length > 0);
 }

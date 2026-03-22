@@ -1,13 +1,15 @@
 import { Command, Args } from '@sapphire/framework';
 import { ApplyOptions } from '@sapphire/decorators';
-import { PermissionFlagsBits, TextChannel, Message, ChannelType } from 'discord.js';
+import { PermissionFlagsBits, GuildMember, Message, TextChannel, NewsChannel } from 'discord.js';
 import { resolveKey } from '@sapphire/plugin-i18next';
-import { getMessageLayout } from '../../lib/layouts/defaultLayout';
-import { getLockdownLayout } from '../../lib/layouts/modCommandLayouts';
+import { requireModConfig } from '../../lib/utils/ModUtils';
 import { Emojis } from '../../lib/constants/emojis';
+import { ContainerComponent, TextDisplayComponent } from '../../lib/layouts/ui';
+import { CaramelUserError } from '../../lib/structures/Errors';
 
 @ApplyOptions<Command.Options>({
-    description: 'Lock or unlock a channel',
+    name: 'lockdown',
+    description: 'Lock/Unlock a channel',
 })
 export class LockdownCommand extends Command {
     public override registerApplicationCommands(registry: Command.Registry) {
@@ -16,56 +18,97 @@ export class LockdownCommand extends Command {
                 .setName(this.name)
                 .setDescription(this.description)
                 .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
-                .addChannelOption(opt => opt.setName('channel').setDescription('Channel (defaults to current)').addChannelTypes(ChannelType.GuildText))
+                .addChannelOption(opt => opt.setName('channel').setDescription('Channel to lockdown (optional)'))
         );
     }
 
     public async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-        const target = (interaction.options.getChannel('channel') ?? interaction.channel) as TextChannel;
+        const targetChannel = interaction.options.getChannel('channel') ?? interaction.channel;
+        
         await interaction.deferReply({ ephemeral: false });
 
-        try {
-            const everyoneOverwrite = target.permissionOverwrites.cache.get(interaction.guild!.roles.everyone.id);
-            const isLocked = everyoneOverwrite?.deny.has(PermissionFlagsBits.SendMessages) ?? false;
+        if (!interaction.guild) throw new CaramelUserError('errors:unexpected');
+        await requireModConfig(interaction.guildId!);
 
-            if (isLocked) {
-                await target.permissionOverwrites.edit(interaction.guild!.roles.everyone, { SendMessages: null });
-                const content = await resolveKey(interaction, 'modcommands:mod.lockdown.unlocked', { emoji: Emojis.channel_unlocked_emoji, channel: target.id });
-                await target.send(getLockdownLayout(await resolveKey(interaction, 'modcommands:mod.lockdown.unlockedMsg', { emoji: Emojis.channel_unlocked_emoji })));
-                return interaction.editReply({ ...getMessageLayout(content) });
-            } else {
-                await target.permissionOverwrites.edit(interaction.guild!.roles.everyone, { SendMessages: false });
-                const content = await resolveKey(interaction, 'modcommands:mod.lockdown.locked', { emoji: Emojis.channel_locked_emoji, channel: target.id });
-                await target.send(getLockdownLayout(await resolveKey(interaction, 'modcommands:mod.lockdown.lockedMsg', { emoji: Emojis.channel_locked_emoji })));
-                return interaction.editReply({ ...getMessageLayout(content) });
-            }
-        } catch (error) {
-            this.container.logger.error(`[MOD LOCKDOWN]`, error);
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'errors:unexpected')) });
+        if (!targetChannel || !('permissionOverwrites' in targetChannel)) {
+             throw new CaramelUserError('errors:unexpected');
         }
+
+        const textChannel = targetChannel as TextChannel | NewsChannel;
+        const isLocked = textChannel.permissionOverwrites.cache.get(interaction.guildId!)?.deny.has(PermissionFlagsBits.SendMessages);
+        const isRemote = targetChannel.id !== interaction.channelId;
+
+        let content = '';
+        let remoteContent = '';
+
+        if (isLocked) {
+            // Unlock
+            await textChannel.permissionOverwrites.edit(interaction.guildId!, { SendMessages: null }, { reason: 'Manual Unlock' });
+            
+            if (isRemote) {
+                content = `${Emojis.channel_unlocked_emoji} ${await resolveKey(interaction, 'modcommands:sanctions.confirmations.unlockdown_remote', { channel: targetChannel.toString() })}`;
+                remoteContent = `${Emojis.channel_unlocked_emoji} ${await resolveKey(interaction, 'modcommands:sanctions.confirmations.unlockdown')}`;
+            } else {
+                content = `${Emojis.channel_unlocked_emoji} ${await resolveKey(interaction, 'modcommands:sanctions.confirmations.unlockdown')}`;
+            }
+        } else {
+            // Lock
+            await textChannel.permissionOverwrites.edit(interaction.guildId!, { SendMessages: false }, { reason: 'Manual Lockdown' });
+            
+            if (isRemote) {
+                content = `${Emojis.channel_locked_emoji} ${await resolveKey(interaction, 'modcommands:sanctions.confirmations.lockdown_remote', { channel: targetChannel.toString() })}`;
+                remoteContent = `${Emojis.channel_locked_emoji} ${await resolveKey(interaction, 'modcommands:sanctions.confirmations.lockdown')}`;
+            } else {
+                content = `${Emojis.channel_locked_emoji} ${await resolveKey(interaction, 'modcommands:sanctions.confirmations.lockdown')}`;
+            }
+        }
+
+        if (isRemote && remoteContent) {
+            await textChannel.send({ flags: 32768, components: [ContainerComponent([TextDisplayComponent(remoteContent)])] }).catch(() => null);
+        }
+
+        return interaction.editReply({ flags: 32768, components: [ContainerComponent([TextDisplayComponent(content)])] });
     }
 
     public async messageRun(message: Message, args: Args) {
-        const target = await args.pick('channel').catch(() => message.channel) as TextChannel;
+        const targetChannel = await args.pick('guildTextChannel').catch(() => message.channel as TextChannel);
 
-        try {
-            const everyoneOverwrite = target.permissionOverwrites.cache.get(message.guild!.roles.everyone.id);
-            const isLocked = everyoneOverwrite?.deny.has(PermissionFlagsBits.SendMessages) ?? false;
+        if (!message.guild) throw new CaramelUserError('errors:unexpected');
+        await requireModConfig(message.guildId!);
 
-            if (isLocked) {
-                await target.permissionOverwrites.edit(message.guild!.roles.everyone, { SendMessages: null });
-                const content = await resolveKey(message, 'modcommands:mod.lockdown.unlocked', { emoji: Emojis.channel_unlocked_emoji, channel: target.id });
-                await target.send(getLockdownLayout(await resolveKey(message, 'modcommands:mod.lockdown.unlockedMsg', { emoji: Emojis.channel_unlocked_emoji })));
-                return message.reply({ ...getMessageLayout(content) });
+        const textChannel = targetChannel as TextChannel | NewsChannel;
+        const isLocked = textChannel.permissionOverwrites.cache.get(message.guildId!)?.deny.has(PermissionFlagsBits.SendMessages);
+        const isRemote = targetChannel.id !== message.channelId;
+
+        let content = '';
+        let remoteContent = '';
+
+        if (isLocked) {
+            // Unlock
+            await textChannel.permissionOverwrites.edit(message.guildId!, { SendMessages: null }, { reason: 'Manual Unlock' });
+            
+            if (isRemote) {
+                content = `${Emojis.channel_unlocked_emoji} ${await resolveKey(message, 'modcommands:sanctions.confirmations.unlockdown_remote', { channel: targetChannel.toString() })}`;
+                remoteContent = `${Emojis.channel_unlocked_emoji} ${await resolveKey(message, 'modcommands:sanctions.confirmations.unlockdown')}`;
             } else {
-                await target.permissionOverwrites.edit(message.guild!.roles.everyone, { SendMessages: false });
-                const content = await resolveKey(message, 'modcommands:mod.lockdown.locked', { emoji: Emojis.channel_locked_emoji, channel: target.id });
-                await target.send(getLockdownLayout(await resolveKey(message, 'modcommands:mod.lockdown.lockedMsg', { emoji: Emojis.channel_locked_emoji })));
-                return message.reply({ ...getMessageLayout(content) });
+                content = `${Emojis.channel_unlocked_emoji} ${await resolveKey(message, 'modcommands:sanctions.confirmations.unlockdown')}`;
             }
-        } catch (error) {
-            this.container.logger.error(`[MOD LOCKDOWN]`, error);
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'errors:unexpected')) });
+        } else {
+            // Lock
+            await textChannel.permissionOverwrites.edit(message.guildId!, { SendMessages: false }, { reason: 'Manual Lockdown' });
+            
+            if (isRemote) {
+                content = `${Emojis.channel_locked_emoji} ${await resolveKey(message, 'modcommands:sanctions.confirmations.lockdown_remote', { channel: targetChannel.toString() })}`;
+                remoteContent = `${Emojis.channel_locked_emoji} ${await resolveKey(message, 'modcommands:sanctions.confirmations.lockdown')}`;
+            } else {
+                content = `${Emojis.channel_locked_emoji} ${await resolveKey(message, 'modcommands:sanctions.confirmations.lockdown')}`;
+            }
         }
+
+        if (isRemote && remoteContent) {
+            await textChannel.send({ flags: 32768, components: [ContainerComponent([TextDisplayComponent(remoteContent)])] }).catch(() => null);
+        }
+
+        return message.reply({ flags: 32768, components: [ContainerComponent([TextDisplayComponent(content)])] });
     }
 }

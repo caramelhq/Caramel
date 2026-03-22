@@ -1,30 +1,23 @@
 {
-  "vanity": {
-    "roleAdded": "Assigned vanity role: `{{role}}`",
-    "roleRemoved": "Removed vanity role: `{{role}}`"
-  },
   "config": {
     "language": {
-      "invalid": "`❌` Invalid language. Available: `en`, `es`.",
-      "success": "`✅` Language set to **{{lang}}**."
-    },
-    "module": {
-      "notFound": "`❌` Module not found.",
-      "alreadyEnabled": "`❌` Module **{{name}}** is already enabled.",
-      "alreadyDisabled": "`❌` Module **{{name}}** is already disabled.",
-      "enabled": "Module **{{name}}** enabled.",
-      "disabled": "Module **{{name}}** disabled.",
-      "resetTitle": "Reset Module: {{name}}",
-      "resetDesc": "This will delete all configuration for the **{{name}}** module in this server.",
-      "resetDeletions": "The following data will be deleted:",
-      "resetConfirm": "Yes, reset everything",
-      "resetCancel": "No, keep it",
-      "resetSuccess": "`✅` Module **{{name}}** has been reset.",
-      "setupTitle": "Setup: {{name}}",
-      "setupDesc": "You are about to configure the **{{name}}** module.",
-      "setupConfirm": "Yes, proceed",
-      "setupCancel": "No, cancel",
-      "setupSuccess": "`✅` Module **{{name}}** has been configured."
+      "invalid": "{{cross}} Invalid language. Available: `en`, `es`.",
+      "success": "{{check}} Language updated to **{{lang}}**."
     }
+  },
+  "module": {
+    "notFound": "{{cross}} Module not found.",
+    "alreadyEnabled": "{{cross}} The module **{{name}}** is already enabled.",
+    "alreadyDisabled": "{{cross}} The module **{{name}}** is already disabled.",
+    "enabled": "enabled",
+    "disabled": "disabled",
+    "enableSuccess": "The module **{{name}}** has been enabled.",
+    "disableSuccess": "The module **{{name}}** has been disabled.",
+    "resetSuccess": "{{check}} The module **{{name}}** has been reset.",
+    "setupSuccess": "{{check}} The module **{{name}}** has been configured."
+  },
+  "prefix": {
+    "invalid": "{{cross}} The prefix must be between 1 and 5 characters and cannot contain spaces.",
+    "success": "{{check}} The prefix has been updated to: `{{prefix}}`"
   }
 }

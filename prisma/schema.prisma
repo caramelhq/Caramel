@@ -37,14 +37,103 @@ model GuildConfig {
     banThreshold           Int      @default(5) @map("ban_threshold")
     modChannelCreatedByBot Boolean  @default(false) @map("mod_channel_created_by_bot")
     modRoleCreatedByBot    Boolean  @default(false) @map("mod_role_created_by_bot")
+    warnExpirationDays     Int      @default(90) @map("warn_expiration_days")
+    thresholdMode          String   @default("modular") @map("threshold_mode")
+    caseCount              Int      @default(0) @map("case_count")
+
+    // AutoMod module ──────────
+    automodModule          Boolean  @default(false) @map("automod_module")
 
     // General ──────────
     locale String @default("en-US") @map("locale")
+    prefix String @default("c!") @map("prefix")
 
     createdAt DateTime @default(now()) @map("created_at")
     updatedAt DateTime @updatedAt @map("updated_at")
 
     @@map("guild_configs")
+}
+
+
+// ─────────────────────────────────────────────
+//  AutoModRule
+// ─────────────────────────────────────────────
+
+model AutoModRule {
+    id          Int      @id @default(autoincrement())
+    guildId     String   @map("guild_id")
+    name        String   @db.VarChar(100)
+    type        String   // SPAM, LINKS, INVITES, WORDS, MENTIONS
+    action      String   // DELETE, TIMEOUT, KICK, BAN, ALERT
+    enabled     Boolean  @default(true)
+    content     String[] // Banned words, domains, etc.
+    threshold   Int?     // For spam or mentions
+    duration    String?  // For TIMEOUT (e.g., "10m")
+    whitelist   String[] // Role or Channel IDs to ignore
+    
+    createdAt   DateTime @default(now()) @map("created_at")
+    updatedAt   DateTime @updatedAt @map("updated_at")
+
+    @@index([guildId])
+    @@map("automod_rules")
+}
+
+
+// ─────────────────────────────────────────────
+//  AutoModPreset
+// ─────────────────────────────────────────────
+
+model AutoModPreset {
+    id          Int      @id @default(autoincrement())
+    level       Int      // 1 (Low), 2 (Medium), 3 (High)
+    language    String   // "en", "es"
+    topic       String   // "General", "NSFW", "Crypto", etc.
+    rules       Json     // Array of rule definitions for mass import
+    
+    createdAt   DateTime @default(now()) @map("created_at")
+
+    @@unique([level, language, topic])
+    @@map("automod_presets")
+}
+
+
+// ─────────────────────────────────────────────
+//  ModThreshold
+// ─────────────────────────────────────────────
+
+model ModThreshold {
+    id          Int      @id @default(autoincrement())
+    guildId     String   @map("guild_id")
+    triggerType String   @default("warn") @map("trigger_type") // What we count (warn, mute, timeout, etc.)
+    threshold   Int      @map("threshold")    // How many occurrences
+    action      String   @map("action")       // Action to apply
+    duration    String?  @map("duration")
+
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@unique([guildId, triggerType, threshold], name: "guild_trigger_threshold_unique")
+    @@map("mod_thresholds")
+}
+
+
+// ─────────────────────────────────────────────
+//  ActiveTempBan
+// ─────────────────────────────────────────────
+
+model ActiveTempBan {
+    id          Int      @id @default(autoincrement())
+    guildId     String   @map("guild_id")
+    userId      String   @map("user_id")
+    moderatorId String   @map("moderator_id")
+    reason      String?  @db.VarChar(500)
+    caseNumber  Int      @default(0) @map("case_number")
+    expiresAt   DateTime @map("expires_at")
+    createdAt   DateTime @default(now()) @map("created_at")
+
+    @@unique([guildId, userId], name: "tempban_guild_user_unique")
+    @@index([guildId, userId])
+    @@map("active_tempbans")
 }
 
 
@@ -58,6 +147,7 @@ model SilentBan {
     userId      String   @map("user_id")
     moderatorId String   @map("moderator_id")
     reason      String?  @db.VarChar(500)
+    caseNumber  Int      @default(0) @map("case_number")
     expiresAt   DateTime? @map("expires_at")
     createdAt   DateTime @default(now()) @map("created_at")
     updatedAt   DateTime @updatedAt @map("updated_at")
@@ -78,6 +168,7 @@ model WarnLog {
     userId      String   @map("user_id")
     moderatorId String   @map("moderator_id")
     reason      String?  @db.VarChar(500)
+    caseNumber  Int      @default(0) @map("case_number")
     createdAt   DateTime @default(now()) @map("created_at")
     updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -98,6 +189,8 @@ model ModLog {
     action      String
     reason      String?  @db.VarChar(500)
     duration    String?
+    caseNumber  Int      @default(0) @map("case_number")
+    isAutomatic Boolean  @default(false) @map("is_automatic") // New field to label auto-sanctions
     expiresAt   DateTime? @map("expires_at")
     createdAt   DateTime @default(now()) @map("created_at")
     updatedAt   DateTime @updatedAt @map("updated_at")
@@ -117,6 +210,7 @@ model ActiveMute {
     userId      String   @map("user_id")
     moderatorId String   @map("moderator_id")
     reason      String?  @db.VarChar(500)
+    caseNumber  Int      @default(0) @map("case_number")
     expiresAt   DateTime? @map("expires_at")
     createdAt   DateTime @default(now()) @map("created_at")
     updatedAt   DateTime @updatedAt @map("updated_at")
@@ -124,4 +218,22 @@ model ActiveMute {
     @@unique([guildId, userId], name: "mute_guild_user_unique")
     @@index([guildId, userId])
     @@map("active_mutes")
+}
+
+// ─────────────────────────────────────────────
+//  UserFavorite
+// ─────────────────────────────────────────────
+
+model UserFavorite {
+    id          Int      @id @default(autoincrement())
+    userId      String   @map("user_id")
+    trackTitle  String   @map("track_title")
+    trackUrl    String   @map("track_url")
+    author      String   @map("author")
+    
+    createdAt   DateTime @default(now()) @map("created_at")
+
+    @@unique([userId, trackUrl])
+    @@index([userId])
+    @@map("user_favorites")
 }

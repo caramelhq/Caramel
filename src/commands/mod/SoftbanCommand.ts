@@ -2,13 +2,18 @@ import { Command, Args } from '@sapphire/framework';
 import { ApplyOptions } from '@sapphire/decorators';
 import { PermissionFlagsBits, GuildMember, Message } from 'discord.js';
 import { resolveKey } from '@sapphire/plugin-i18next';
-import { requireModConfig, validateMod, sendModDM, sendModLog } from '../../lib/utils/ModUtils';
-import { prisma } from '../../database/db';
+import { requireModConfig, validateMod, sendModDM, sendModLog, checkThresholds } from '../../lib/utils/ModUtils';
 import { Emojis } from '../../lib/constants/emojis';
-import { getMessageLayout } from '../../lib/layouts/defaultLayout';
-import { getStatusUpdateLayout, getCancelledLayout, getTimeoutLayout } from '../../lib/layouts/modCommandLayouts';
+import { getStaffConfirmationLayout } from '../../lib/layouts/modCommandLayouts';
+import { CaramelUserError } from '../../lib/structures/Errors';
 
+@ApplyOptions<Command.Options>({
+    name: 'softban',
+    description: 'Softban a member',
+})
 export class SoftbanCommand extends Command {
+    public readonly usage = 'modcommands:mod.usage.softban';
+
     public override registerApplicationCommands(registry: Command.Registry) {
         registry.registerChatInputCommand((builder) =>
             builder
@@ -25,48 +30,60 @@ export class SoftbanCommand extends Command {
         const target     = interaction.options.getMember('user') as GuildMember | null;
         const reason     = interaction.options.getString('reason') ?? null;
         const deleteDays = interaction.options.getInteger('delete_days') ?? 3;
+        
         await interaction.deferReply({ ephemeral: false });
 
-        if (!target) return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'errors:memberNotFound')) });
-        const err = await validateMod(interaction, target);
-        if (err) return interaction.editReply({ ...getMessageLayout(err) });
-        if (!target.bannable) return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'modcommands:mod.ban.notBannable')) });
-        if (!await requireModConfig(interaction)) return;
+        if (!target) throw new CaramelUserError('errors:memberNotFound');
+        
+        await validateMod(interaction, target);
+        if (!target.bannable) throw new CaramelUserError('modcommands:mod.ban.notBannable');
+        await requireModConfig(interaction.guildId!);
 
-        try {
-            await sendModDM({ userId: target.id, action: 'ban', guildName: interaction.guild!.name, reason });
-            await target.ban({ reason: reason ?? undefined, deleteMessageDays: deleteDays });
-            await interaction.guild!.members.unban(target.id, 'Softban - automatic unban');
-            await sendModLog({ guildId: interaction.guildId!, action: 'ban', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, reason: `[Softban] ${reason ?? ''}`.trim() });
+        await sendModDM({ userId: target.id, moderatorId: interaction.user.id, action: 'softban', guild: interaction.guild!, reason });
+        await target.ban({ reason: reason ?? undefined, deleteMessageDays: deleteDays });
+        
+        const auditReason = await resolveKey(interaction, 'modcommands:mod.ban.softbanAuditReason');
+        await interaction.guild!.members.unban(target.id, auditReason);
+        const caseNumber = await sendModLog({ guildId: interaction.guildId!, action: 'softban', userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, guild: interaction.guild!, reason: reason ?? null });
+        await checkThresholds({ guildId: interaction.guildId!, userId: target.id, userTag: target.user.tag, moderatorId: interaction.user.id, guild: interaction.guild!, actionTriggered: 'softban' });
 
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'modcommands:mod.ban.softbanSuccess', { emoji: Emojis.enabled_setting_emoji, user: target.user.tag, days: deleteDays })) });
-        } catch (error) {
-            this.container.logger.error(`[MOD SOFTBAN]`, error);
-            return interaction.editReply({ ...getMessageLayout(await resolveKey(interaction, 'errors:unexpected')) });
-        }
+        const successMsg = await resolveKey(interaction, 'modcommands:sanctions.confirmations.softban', { 
+            emoji: Emojis.softban_emoji, 
+            user: target.toString(), 
+            userId: target.id 
+        });
+
+        return interaction.editReply(getStaffConfirmationLayout({
+            content: successMsg,
+            caseId: caseNumber ?? 0
+        }));
     }
 
     public async messageRun(message: Message, args: Args) {
-        const target = await args.pick('member').catch(() => null) as GuildMember | null;
+        const target = await args.pick('member').catch(() => { throw new CaramelUserError('errors:memberNotFound'); });
         const reason = await args.rest('string').catch(() => null);
 
-        if (!target) return message.reply({ ...getMessageLayout(await resolveKey(message, 'errors:memberNotFound')) });
-        const err = await validateMod(message, target);
-        if (err) return message.reply({ ...getMessageLayout(err) });
-        if (!target.bannable) return message.reply({ ...getMessageLayout(await resolveKey(message, 'modcommands:mod.ban.notBannable')) });
+        await validateMod(message, target);
+        if (!target.bannable) throw new CaramelUserError('modcommands:mod.ban.notBannable');
+        await requireModConfig(message.guildId!);
 
-        if (!await requireModConfig(message)) return;
+        await sendModDM({ userId: target.id, moderatorId: message.author.id, action: 'softban', guild: message.guild!, reason });
+        await target.ban({ reason: reason ?? undefined, deleteMessageDays: 3 });
+        
+        const auditReason = await resolveKey(message, 'modcommands:mod.ban.softbanAuditReason');
+        await message.guild!.members.unban(target.id, auditReason);
+        const caseNumber = await sendModLog({ guildId: message.guildId!, action: 'softban', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, guild: message.guild!, reason: reason ?? null });
+        await checkThresholds({ guildId: message.guildId!, userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, guild: message.guild!, actionTriggered: 'softban' });
 
-        try {
-            await sendModDM({ userId: target.id, action: 'ban', guildName: message.guild!.name, reason });
-            await target.ban({ reason: reason ?? undefined, deleteMessageDays: 3 });
-            await message.guild!.members.unban(target.id, 'Softban - automatic unban');
-            await sendModLog({ guildId: message.guildId!, action: 'ban', userId: target.id, userTag: target.user.tag, moderatorId: message.author.id, reason: `[Softban] ${reason ?? ''}`.trim() });
+        const successMsg = await resolveKey(message, 'modcommands:sanctions.confirmations.softban', { 
+            emoji: Emojis.softban_emoji, 
+            user: target.toString(), 
+            userId: target.id 
+        });
 
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'modcommands:mod.ban.softbanSuccessMsg', { emoji: Emojis.enabled_setting_emoji, user: target.user.tag })) });
-        } catch (error) {
-            this.container.logger.error(`[MOD SOFTBAN]`, error);
-            return message.reply({ ...getMessageLayout(await resolveKey(message, 'errors:unexpected')) });
-        }
+        return message.reply(getStaffConfirmationLayout({
+            content: successMsg,
+            caseId: caseNumber ?? 0
+        }));
     }
 }

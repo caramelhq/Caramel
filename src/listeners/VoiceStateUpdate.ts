@@ -16,7 +16,20 @@ export class VoiceStateUpdateListener extends Listener<typeof Events.VoiceStateU
 
     public async run(oldState: VoiceState, newState: VoiceState) {
         const { member, guild } = newState;
-        const { logger } = this.container;
+        const { logger, music } = this.container;
+
+        // Auto-disconnect if bot is alone in channel ──────────
+        const botVoiceChannel = guild.members.me?.voice.channel;
+        if (botVoiceChannel && botVoiceChannel.members.filter(m => !m.user.bot).size === 0) {
+            setTimeout(async () => {
+                const recheckedChannel = guild.members.me?.voice.channel;
+                if (recheckedChannel && recheckedChannel.members.filter(m => !m.user.bot).size === 0) {
+                    logger.info(`🎵 [MUSIC] Channel empty in ${guild.id}. Leaving...`);
+                    await music.leaveVoiceChannel(guild.id);
+                    music.queues.delete(guild.id);
+                }
+            }, 3000); // 3 seconds
+        }
 
         if (!newState.channel || !member || member.user.bot) return;
         if (oldState.channelId === newState.channelId) return;

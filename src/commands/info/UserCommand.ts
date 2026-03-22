@@ -9,6 +9,8 @@ import { type Message, type GuildMember, type User, time, TimestampStyles } from
     description: 'Get information about a user'
 })
 export class UserCommand extends Command {
+    public readonly usage = 'infocommands:user.usage';
+
     public override registerApplicationCommands(registry: Command.Registry) {
         registry.registerChatInputCommand((builder) =>
             builder
@@ -30,20 +32,20 @@ export class UserCommand extends Command {
         targetUser: User,
         targetMember: GuildMember | null
     ) {
-        // Build the labels required by the layout
         const labels = {
             joinedDiscord:  await resolveKey(interactionOrMessage, 'infocommands:user.labels.joinedDiscord'),
             joinedServer:   await resolveKey(interactionOrMessage, 'infocommands:user.labels.joinedServer'),
             highestRole:    await resolveKey(interactionOrMessage, 'infocommands:user.labels.highestRole'),
             viewHistoryBtn: await resolveKey(interactionOrMessage, 'infocommands:user.labels.viewHistoryBtn'),
             addNoteBtn:     await resolveKey(interactionOrMessage, 'infocommands:user.labels.addNoteBtn'),
+            notInServer:    await resolveKey(interactionOrMessage, 'infocommands:user.labels.notInServer'),
+            none:           await resolveKey(interactionOrMessage, 'infocommands:user.labels.none'),
         };
 
-        // Format Discord dates
         const createdDateStr = `${time(targetUser.createdAt, TimestampStyles.LongDate)} (${time(targetUser.createdAt, TimestampStyles.RelativeTime)})`;
         
-        let joinedDateStr  = 'Not in server';
-        let highestRoleStr = '`None`';
+        let joinedDateStr  = labels.notInServer;
+        let highestRoleStr = labels.none;
         let accentColor    = 0xF9A825; // Base color fallback (Caramel Yellow)
 
         if (targetMember) {
@@ -51,7 +53,6 @@ export class UserCommand extends Command {
                 joinedDateStr = `${time(targetMember.joinedAt, TimestampStyles.LongDate)} (${time(targetMember.joinedAt, TimestampStyles.RelativeTime)})`;
             }
             
-            // Fixes highest role display by getting highest hoisted or just highest
             const highestRole = targetMember.roles.highest;
             if (highestRole.id !== targetMember.guild.id) { // Not everyone
                 highestRoleStr = `<@&${highestRole.id}>`;
@@ -62,8 +63,6 @@ export class UserCommand extends Command {
         }
 
         const avatarUrl = targetMember?.displayAvatarURL({ size: 1024 }) || targetUser.displayAvatarURL({ size: 1024 });
-        
-        // Extract the user ID of the person executing this command
         const invokerId = 'user' in interactionOrMessage ? interactionOrMessage.user.id : interactionOrMessage.author.id;
 
         return getUserInfoLayout(
@@ -89,21 +88,14 @@ export class UserCommand extends Command {
     }
 
     public override async messageRun(message: Message, args: Args) {
-        // Try to pick a user mention or ID, otherwise default to the author
         const targetUser = await args.pick('user').catch(() => message.author);
         let targetMember: GuildMember | null = null;
         
-        try {
-            // Only try to fetch the member if we are in a guild
-            if (message.guild) {
-                targetMember = await message.guild.members.fetch(targetUser.id).catch(() => null);
-            }
-        } catch {
-            targetMember = null;
+        if (message.guild) {
+            targetMember = await message.guild.members.fetch(targetUser.id).catch(() => null);
         }
 
         const layout = await this.getUserData(message, targetUser, targetMember);
         return message.reply({ ...layout } as any);
     }
 }
-

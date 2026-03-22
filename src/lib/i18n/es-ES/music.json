@@ -1,0 +1,46 @@
+{
+  "play": {
+    "noChannel": "{{cross}} Debes estar en un canal de voz para usar este comando.",
+    "wrongChannel": "{{cross}} Debes estar en el mismo canal de voz que el bot.",
+    "noResults": "{{cross}} No se encontraron resultados para esa búsqueda.",
+    "loaded": "Añadida a la cola: **{{title}}**",
+    "playlistLoaded": "Se han cargado **{{count}}** canciones de la lista **{{name}}**."
+  },
+  "controls": {
+    "noTrack": "{{cross}} No hay ninguna canción reproduciéndose ahora mismo.",
+    "skip": "Pista saltada.",
+    "stop": "Reproducción detenida.",
+    "loopEnabled": "Bucle habilitado.",
+    "loopDisabled": "Bucle deshabilitado.",
+    "paused": "Music paused.",
+    "resumed": "Music resumed.",
+    "shuffle": "¡La cola ha sido mezclada!",
+    "favoriteAdded": "¡Añadida a favoritos!",
+    "favoriteRemoved": "Eliminada de favoritos.",
+    "favoriteLimit": "Solo puedes tener hasta 10 canciones favoritas."
+  },
+  "labels": {
+    "nowPlaying": "Reproduciendo Ahora",
+    "requestedBy": "Pedido por",
+    "author": "Autor",
+    "track": "Pista",
+    "queue": "Cola de Reproducción",
+    "status": "Estado",
+    "pause": "Pausar",
+    "resume": "Reanudar",
+    "skip": "Saltar",
+    "stop": "Detener",
+    "loop": "Bucle",
+    "in": "En"
+    },
+
+  "lyrics": {
+  "noResults": "{{cross}} No se encontró la letra de esa canción.",
+  "title": "Letra de: {{title}}",
+  "searching": "{{emoji}} Buscando letra...",
+  "footer": "Página {{current}} de {{total}}"
+  },
+  "queue": {
+  "empty": "{{cross}} La cola está vacía actualmente."
+  }
+  }
