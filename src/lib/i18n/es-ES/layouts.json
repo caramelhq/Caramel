@@ -23,6 +23,12 @@
     },
     "automod": {
       "rulesCount": "Reglas Activas"
+    },
+    "logs": {
+      "mode": "Modo de Configuración",
+      "categories": "Categorías Habilitadas",
+      "categoryChannels": "Canales por Categoría",
+      "eventChannels": "Rutas de Eventos"
     }
   }
 }

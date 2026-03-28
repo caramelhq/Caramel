@@ -1,0 +1,61 @@
+{
+  "command": {
+    "description": "Diagnosticos y utilidades de administracion",
+    "subcommands": {
+      "health": "Muestra el estado y diagnostico en tiempo real"
+    },
+    "botCommander": {
+      "description": "Designa roles o miembros como Bot Commanders",
+      "subcommands": {
+        "allow": "Otorga el rol de Bot Commander a un rol o miembro",
+        "remove": "Elimina el rol de Bot Commander de un rol o miembro"
+      },
+      "options": {
+        "role": "Rol a seleccionar",
+        "member": "Miembro a seleccionar"
+      }
+    }
+  },
+  "botCommander": {
+    "allow": {
+      "success": "{{name}} ahora es Bot Commander."
+    },
+    "remove": {
+      "success": "Se removio el Bot Commander de {{name}}.",
+      "notFound": "{{name}} no es Bot Commander."
+    },
+    "errors": {
+      "noTarget": "Debes especificar un rol o un miembro.",
+      "bothTargets": "Especifica solo un rol o un miembro, no ambos."
+    }
+  },
+  "health": {
+    "title": "Salud de Admin",
+    "values": {
+      "notAvailable": "n/d"
+    },
+    "labels": {
+      "uptime": "Uptime",
+      "readySince": "Activo Desde",
+      "wsPing": "Ping de Gateway",
+      "shards": "Shards",
+      "db": "Base de Datos",
+      "redis": "Redis",
+      "guilds": "Servidores",
+      "usersCached": "Usuarios en Cache",
+      "channelsCached": "Canales en Cache",
+      "musicNodes": "Nodos de Musica",
+      "musicPlayers": "Players de Musica",
+      "musicQueues": "Colas de Musica",
+      "memoryHeap": "Memoria Heap",
+      "memoryRss": "Memoria RSS",
+      "nodeVersion": "Version de Node",
+      "pid": "ID de Proceso"
+    },
+    "status": {
+      "ok": "OK",
+      "degraded": "DEGRADADO",
+      "down": "CAIDO"
+    }
+  }
+}

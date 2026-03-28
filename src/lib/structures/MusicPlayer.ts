@@ -1,11 +1,16 @@
 import { Player, Track } from 'shoukaku';
 import { container } from '@sapphire/framework';
 import { getMusicPlayerLayout, getQueueLayout } from '../layouts/musicLayouts';
+import { getMessageLayout } from '../layouts/defaultLayout';
 import { resolveKey } from '@sapphire/plugin-i18next';
 import { TextChannel } from 'discord.js';
 import { getDominantColor } from '../utils/color';
 import { cleanTrackTitle, formatDuration } from '../utils/MusicUtils';
+import { getTrackDisplayMetadata } from '../utils/TrackMetadataResolver';
+import { MusicPlayerTimingMs, MusicStateTtlSeconds } from '../constants/musicUi';
 
+
+import { FilterPresets, FilterType } from '../constants/musicFilters';
 
 // Music player ──────────────────
 
@@ -13,13 +18,49 @@ export class MusicPlayer {
     public queue: Track[] = [];
     public current: Track | null = null;
     public loop: boolean = false;
+    public autoplay: boolean = false;
+    public activeFilter: FilterType = 'off';
     public textChannelId: string | null = null;
     private lastMessageId: string | null = null;
     private currentTrackColor: number | null = null;
     private isProcessing: boolean = false;
     private idleTimeout: NodeJS.Timeout | null = null;
+    private persistenceInterval: NodeJS.Timeout | null = null;
+    private disposed: boolean = false;
+    public isRehydrating: boolean = false;
 
-    public constructor(public readonly guildId: string, public readonly player: Player) {
+    public constructor(
+        public readonly guildId: string, 
+        public readonly player: Player, 
+        initialState?: { queue: Track[], current: Track | null, loop: boolean, autoplay?: boolean, textChannelId: string | null, lastMessageId?: string | null, isPaused?: boolean, activeFilter?: FilterType }
+    ) {
+        // Clean up any existing listeners on the Shoukaku player (important for rehydration/reuse)
+        this.player.removeAllListeners();
+
+        if (initialState) {
+            this.queue = initialState.queue;
+            this.current = initialState.current;
+            this.loop = initialState.loop;
+            this.autoplay = initialState.autoplay ?? false;
+            this.textChannelId = initialState.textChannelId;
+            this.lastMessageId = initialState.lastMessageId ?? null;
+            this.activeFilter = initialState.activeFilter ?? 'off';
+            this.isRehydrating = true;
+
+            // Apply filters if they were active
+            if (this.activeFilter !== 'off') {
+                const preset = FilterPresets[this.activeFilter];
+                if (preset) this.player.setFilters(preset).catch(() => null);
+            }
+        }
+
+        // Start persistence heartbeat
+        this.persistenceInterval = setInterval(() => {
+            if (this.disposed) return;
+            if (this.current && !this.player.paused && !this.isRehydrating) {
+                this.saveState().catch(() => null);
+            }
+        }, MusicPlayerTimingMs.persistenceHeartbeat);
 
         // Player events ──────────
 
@@ -28,8 +69,12 @@ export class MusicPlayer {
                 clearTimeout(this.idleTimeout);
                 this.idleTimeout = null;
             }
+
+            if (this.isRehydrating) return;
+
             container.logger.info(`🎵 [MUSIC] Started playing in ${this.guildId}: ${this.current?.info.title}`);
             await this.sendNowPlaying().catch(err => container.logger.error(`[MUSIC_PLAYER] Error sending now playing:`, err));
+            await this.saveState().catch(() => null);
         });
 
         this.player.on('end', async (data) => {
@@ -38,14 +83,17 @@ export class MusicPlayer {
             // If reason is 'replaced', it means another track started manually, so we don't playNext
             if (data.reason === 'replaced') return;
 
-            if (this.loop && this.current) {
+            // If reason is 'cleanup' or 'loadFailed', we shouldn't try to loop or playNext as the player might be closing
+            if (['cleanup', 'loadFailed'].includes(data.reason)) return;
+
+            if (this.loop && this.current && data.reason === 'finished') {
                 const trackToRepeat = { ...this.current };
                 container.logger.info(`🎵 [MUSIC] Looping track in ${this.guildId}`);
                 await this.player.playTrack({ track: { encoded: (trackToRepeat as any).encoded } }).catch(() => this.playNext());
             } else {
-                this.current = null; // Clear current before moving to next
                 await this.playNext();
             }
+            await this.saveState().catch(() => null);
         });
 
         this.player.on('exception', (error) => {
@@ -61,24 +109,162 @@ export class MusicPlayer {
         this.player.on('closed', async () => {
             container.logger.info(`🎵 [MUSIC] Player connection closed in ${this.guildId}. cleaning up...`);
             this.stopIdleTimeout();
-            await this.deleteLastMessage();
-            this.queue = [];
-            this.current = null;
+
+            // If this instance was intentionally disposed (stop/leave), perform hard cleanup.
+            if (this.disposed) {
+                if (this.persistenceInterval) {
+                    clearInterval(this.persistenceInterval);
+                    this.persistenceInterval = null;
+                }
+
+                await this.deleteLastMessage();
+                await this.clearState().catch(() => null);
+                this.queue = [];
+                this.current = null;
+                return;
+            }
+
+            // Unexpected close (e.g. Lavalink restart): preserve in-memory queue/current for recovery.
+            container.logger.warn(`⚠️ [MUSIC] Transient player close detected in ${this.guildId}; preserving state for reconnect.`);
+            await this.saveState().catch(() => null);
         });
     }
+
+    /**
+     * Disposes timers and listeners for this player instance.
+     */
+    public dispose() {
+        if (this.disposed) return;
+        this.disposed = true;
+
+        this.stopIdleTimeout();
+
+        if (this.persistenceInterval) {
+            clearInterval(this.persistenceInterval);
+            this.persistenceInterval = null;
+        }
+
+        this.player.removeAllListeners();
+    }
+
+    /**
+     * Sets a filter on the player.
+     */
+    public async setFilter(filter: FilterType) {
+        this.activeFilter = filter;
+        
+        if (filter === 'off') {
+            await this.player.clearFilters();
+        } else {
+            const preset = FilterPresets[filter];
+            if (preset) await this.player.setFilters(preset);
+        }
+
+        await this.saveState().catch(() => null);
+    }
+
+    // State persistence ──────────
+
+    /**
+     * Saves the current player state to Redis.
+     */
+    public async saveState() {
+        const { redis } = container;
+        const guild = container.client.guilds.cache.get(this.guildId);
+        const voiceChannelId = guild?.members.me?.voice.channelId;
+
+        if (!voiceChannelId) return;
+
+        const state = {
+            guildId: this.guildId,
+            textChannelId: this.textChannelId,
+            voiceChannelId,
+            lastMessageId: this.lastMessageId,
+            loop: this.loop,
+            autoplay: this.autoplay,
+            activeFilter: this.activeFilter,
+            isPaused: this.player.paused,
+            position: this.player.position,
+            timestamp: Date.now(),
+            current: this.current
+                ? {
+                    encoded: (this.current as any).encoded,
+                    info: this.current.info,
+                    requestedBy: (this.current as any).requestedBy,
+                    displayMetadata: (this.current as any).displayMetadata ?? null
+                }
+                : null,
+            queue: this.queue.map(t => ({
+                encoded: (t as any).encoded,
+                info: t.info,
+                requestedBy: (t as any).requestedBy,
+                displayMetadata: (t as any).displayMetadata ?? null
+            }))
+        };
+
+        if (!state.current && state.queue.length === 0) {
+            await this.clearState();
+        } else {
+            await redis.set(`music:state:${this.guildId}`, JSON.stringify(state), 'EX', MusicStateTtlSeconds.playerState);
+        }
+    }
+
+    /**
+     * Clears the player state from Redis.
+     */
+    public async clearState() {
+        const { redis } = container;
+        await redis.del(`music:state:${this.guildId}`);
+    }
+
 
     // Idle timeout logic ──────────
 
     private startIdleTimeout() {
         this.stopIdleTimeout();
-        if (this.player.track || this.current) return;
+        if (this.current || this.queue.length > 0) return;
 
         this.idleTimeout = setTimeout(async () => {
+            this.idleTimeout = null;
+
+            // Ignore stale timers from instances that are no longer active in the manager.
+            const activePlayer = container.music.queues.get(this.guildId);
+            if (activePlayer !== this) {
+                container.logger.info(`🎵 [MUSIC] Ignoring stale idle timeout in ${this.guildId}.`);
+                return;
+            }
+
+            // Re-validate state when timer fires to avoid stale idle leaves.
+            const guild = container.client.guilds.cache.get(this.guildId);
+            const botVoiceChannelId = guild?.members.me?.voice.channelId;
+            const hasPlaybackState = Boolean(this.current || this.queue.length > 0);
+
+            if (!botVoiceChannelId || hasPlaybackState) {
+                container.logger.info(`🎵 [MUSIC] Idle timeout aborted in ${this.guildId}. Active playback state detected.`);
+                return;
+            }
+
             container.logger.info(`🎵 [MUSIC] Idle timeout reached in ${this.guildId}. Leaving...`);
+            
+            // Send personality message
+            if (this.textChannelId) {
+                const channel = await container.client.channels.fetch(this.textChannelId).catch(() => null) as TextChannel | null;
+                if (channel) {
+                    const msg = await resolveKey(channel.guild, 'music:messages.idle');
+                    await channel.send(getMessageLayout(msg) as any).catch(() => null);
+                }
+            }
+
+            // Final guard in case something started while sending the idle message.
+            if (this.current || this.queue.length > 0) {
+                container.logger.info(`🎵 [MUSIC] Idle leave cancelled in ${this.guildId}. Playback resumed.`);
+                return;
+            }
+
             const { music } = container;
             await music.leaveVoiceChannel(this.guildId);
             music.queues.delete(this.guildId);
-        }, 180000); // 3 minutes
+        }, MusicPlayerTimingMs.idleDisconnect);
     }
 
     private stopIdleTimeout() {
@@ -92,16 +278,182 @@ export class MusicPlayer {
     // Plays the next track in the queue ──────────
 
     public async playNext(): Promise<void> {
+        if (this.disposed) return;
         if (this.isProcessing) return;
+        
+        // Safety check: is the bot still in a voice channel?
+        const guild = container.client.guilds.cache.get(this.guildId);
+        if (!guild?.members.me?.voice.channelId) {
+            this.stopIdleTimeout();
+            return;
+        }
+
         this.isProcessing = true;
 
         // Clear any idle timeout as we are now processing a potential track
         this.stopIdleTimeout();
 
         try {
-            // If we have a track in queue, or we are specifically told to play something (current)
+            const lastTrack = this.current;
             this.current = this.queue.shift() ?? null;
             this.currentTrackColor = null;
+
+            // Autoplay Logic ──────────
+            if (!this.current && this.autoplay && lastTrack) {
+                container.logger.info(`🎵 [MUSIC] Queue empty in ${this.guildId}, fetching autoplay track...`);
+                
+                const node = container.music.options.nodeResolver(container.music.nodes);
+                if (node) {
+                    let result: any = null;
+                    let seedTrackId: string | null = null;
+                    let seedArtistId: string | null = null;
+
+                    // Step 1: Resolve seeds for Spotify
+                    if (lastTrack.info.sourceName === 'spotify') {
+                        seedTrackId = lastTrack.info.identifier;
+                    } else if (lastTrack.info.uri?.includes('spotify.com/track/')) {
+                        // Extract ID from URL if identifier is not a Spotify ID
+                        const match = lastTrack.info.uri.match(/track\/([a-zA-Z0-9]+)/);
+                        if (match) seedTrackId = match[1];
+                    }
+
+                    // Clean names for better search results
+                    const cleanTitle = cleanTrackTitle(lastTrack.info.title, lastTrack.info.author);
+                    const cleanAuthor = lastTrack.info.author.replace(/\s*-\s*Topic$/i, '').trim();
+
+                    // If we still don't have a direct Spotify ID, search on Spotify
+                    if (!seedTrackId) {
+                        const search = await node.rest.resolve(`spsearch:${cleanAuthor} ${cleanTitle}`).catch(() => null);
+                        if (search && (search.loadType === 'search' || search.loadType === 'track') && (search.data as any).length > 0) {
+                            const track = Array.isArray(search.data) ? search.data[0] : (search.data as any);
+                            seedTrackId = track.info.identifier;
+                        }
+                    }
+
+                    // Try to get artist ID (optional but helpful)
+                    const artistSearch = await node.rest.resolve(`spsearch:artist:${cleanAuthor}`).catch(() => null);
+                    if (artistSearch && artistSearch.loadType === 'search' && (artistSearch.data as any).length > 0) {
+                        seedArtistId = (artistSearch.data as any)[0].info.identifier;
+                    }
+
+                    container.logger.info(`🔍 [MUSIC] Autoplay Seeds -> Track: ${seedTrackId || 'None'} | Artist: ${seedArtistId || 'None'}`);
+
+                    // Step 2: Fetch recommendations from Spotify (sprec)
+                    if (seedTrackId) {
+                        // LavaSrc 4.x simplified mix syntax: sprec:mix:track:ID
+                        const query = `sprec:mix:track:${seedTrackId}`;
+                        result = await node.rest.resolve(query).catch(() => null);
+                        
+                        if (result && (result.loadType === 'playlist' || (result.loadType === 'search' && (result.data as any).length > 0))) {
+                            container.logger.info(`✨ [MUSIC] Using Spotify recommendations (sprec mix) for ${this.guildId}`);
+                        } else {
+                            // Try artist mix as fallback if track mix fails
+                            if (seedArtistId) {
+                                const artistQuery = `sprec:mix:artist:${seedArtistId}`;
+                                result = await node.rest.resolve(artistQuery).catch(() => null);
+                                if (result && (result.loadType === 'playlist' || (result.loadType === 'search' && (result.data as any).length > 0))) {
+                                    container.logger.info(`✨ [MUSIC] Using Spotify Artist recommendations (sprec mix) for ${this.guildId}`);
+                                } else {
+                                    result = null;
+                                }
+                            } else {
+                                result = null; 
+                            }
+                        }
+                    }
+
+                    // Step 3: Fallback to YouTube Radio (RD) if Spotify failed (or no Premium)
+                    if (!result) {
+                        let ytIdentifier = lastTrack.info.identifier;
+                        if (lastTrack.info.sourceName !== 'youtube') {
+                            const ytSearch = await node.rest.resolve(`ytsearch:${lastTrack.info.author} ${lastTrack.info.title}`).catch(() => null);
+                            if (ytSearch && ytSearch.loadType === 'search' && ytSearch.data.length > 0) {
+                                ytIdentifier = (ytSearch.data[0] as Track).info.identifier;
+                            }
+                        }
+                        
+                        const query = `https://www.youtube.com/watch?v=${ytIdentifier}&list=RD${ytIdentifier}`;
+                        result = await node.rest.resolve(query).catch(() => null);
+                        container.logger.info(`🎵 [MUSIC] Using Hybrid Autoplay (YouTube Discovery) for ${this.guildId}`);
+                    }
+
+                    // Step 4: Variety Picker & Spotify Enrichment
+                    if (result && (result.loadType === 'playlist' || result.loadType === 'search')) {
+                        const tracks = result.loadType === 'playlist' ? (result.data as any).tracks as Track[] : result.data as Track[];
+                        
+                        // Filter out the seed track
+                        const candidates = tracks.filter(t => t.info.identifier !== lastTrack.info.identifier);
+
+                        // Variety Picker: Group by author and limit to 3 tracks per artist
+                        const groups = new Map<string, Track[]>();
+                        for (const track of candidates) {
+                            const author = track.info.author.toLowerCase();
+                            if (!groups.has(author)) groups.set(author, []);
+                            if (groups.get(author)!.length < 3) {
+                                groups.get(author)!.push(track);
+                            }
+                        }
+
+                        // Interleave tracks from different authors
+                        const interleaved: Track[] = [];
+                        const authors = Array.from(groups.keys());
+                        
+                        // Shuffle authors
+                        for (let i = authors.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [authors[i], authors[j]] = [authors[j], authors[i]];
+                        }
+
+                        let hasMore = true;
+                        let index = 0;
+                        while (hasMore && interleaved.length < 20) {
+                            hasMore = false;
+                            for (const author of authors) {
+                                const authorTracks = groups.get(author)!;
+                                if (index < authorTracks.length) {
+                                    interleaved.push(authorTracks[index]);
+                                    hasMore = true;
+                                }
+                                if (interleaved.length >= 20) break;
+                            }
+                            index++;
+                        }
+
+                        if (interleaved.length > 0) {
+                            container.logger.info(`✨ [MUSIC] Enriching ${interleaved.length} tracks with Spotify metadata...`);
+
+                            // Step 5: Spotify Enrichment (Paralell)
+                            // We try to find the Spotify version of each YouTube track to get HD artwork
+                            const enrichedTracks = await Promise.all(interleaved.map(async (t) => {
+                                // If already from spotify, skip
+                                if (t.info.sourceName === 'spotify') return t;
+
+                                const cleanTitle = cleanTrackTitle(t.info.title, t.info.author);
+                                const spSearch = await node.rest.resolve(`spsearch:${t.info.author} ${cleanTitle}`).catch(() => null);
+                                
+                                if (spSearch && (spSearch.loadType === 'search' || spSearch.loadType === 'track') && (spSearch.data as any).length > 0) {
+                                    const spTrack = Array.isArray(spSearch.data) ? spSearch.data[0] : (spSearch.data as any);
+                                    // We return the Spotify track object so LavaSrc handles the YT audio resolution 
+                                    // but we keep the HD artwork and clean metadata.
+                                    (spTrack as any).requestedBy = container.client.user!.id;
+                                    return spTrack;
+                                }
+
+                                // Fallback to the original YouTube track if Spotify search fails
+                                (t as any).requestedBy = container.client.user!.id;
+                                return t;
+                            }));
+
+                            for (const track of enrichedTracks) {
+                                this.queue.push(track);
+                            }
+                            
+                            this.current = this.queue.shift() ?? null;
+                            container.logger.info(`✨ [MUSIC] Autoplay Hybrid complete! Queue populated with ${enrichedTracks.length} tracks.`);
+                        }
+                    }
+                }
+            }
 
             if (!this.current) {
                 container.logger.info(`🎵 [MUSIC] Queue empty in ${this.guildId}`);
@@ -118,6 +470,13 @@ export class MusicPlayer {
                 return;
             }
 
+            // Double check: is the bot still in a voice channel before playing?
+            const guildCheck = container.client.guilds.cache.get(this.guildId);
+            if (!guildCheck?.members.me?.voice.channelId) {
+                this.isProcessing = false;
+                return;
+            }
+
             await this.player.playTrack({ track: { encoded: (this.current as any).encoded } });
         } catch (error) {
             container.logger.error(`[MUSIC_PLAYER] Error in playNext for ${this.guildId}:`, error);
@@ -125,11 +484,76 @@ export class MusicPlayer {
             setTimeout(() => {
                 this.isProcessing = false;
                 this.playNext();
-            }, 1000);
+            }, MusicPlayerTimingMs.playNextRetryDelay);
             return;
         }
 
         this.isProcessing = false;
+    }
+
+    /**
+     * Clears all tracks from the queue that were injected by the autoplay system.
+     */
+    public clearAutoplayTracks() {
+        const botId = container.client.user!.id;
+        this.queue = this.queue.filter(track => (track as any).requestedBy !== botId);
+        this.saveState().catch(() => null);
+    }
+
+    /**
+     * Removes a track from the queue by its index (1-based).
+     */
+    public removeTrack(index: number): Track | null {
+        if (index < 1 || index > this.queue.length) return null;
+        const removed = this.queue.splice(index - 1, 1)[0];
+        this.saveState().catch(() => null);
+        return removed;
+    }
+
+    /**
+     * Moves a track from one position to another (1-based).
+     */
+    public moveTrack(fromIndex: number, toIndex: number): boolean {
+        if (fromIndex < 1 || fromIndex > this.queue.length || toIndex < 1 || toIndex > this.queue.length) return false;
+        const track = this.queue.splice(fromIndex - 1, 1)[0];
+        this.queue.splice(toIndex - 1, 0, track);
+        this.saveState().catch(() => null);
+        return true;
+    }
+
+    /**
+     * Sets the player volume (0-200).
+     */
+    public async setVolume(volume: number) {
+        // To prevent digital clipping/distortion at high volumes (>100), 
+        // we can apply a slight negative gain in the equalizer as a safety measure
+        // while still allowing the player to sound louder.
+        const equalizer = [];
+        if (volume > 100) {
+            // Apply a slight reduction across all bands to create more "headroom"
+            const reduction = -((volume - 100) / 400); // Max -0.25 gain at 200 volume
+            for (let i = 0; i < 15; i++) {
+                equalizer.push({ band: i, gain: reduction });
+            }
+        }
+
+        // Direct update via REST is faster and doesn't reset the filter chain buffer
+        await this.player.node.rest.updatePlayer({
+            guildId: this.guildId,
+            playerOptions: { 
+                volume,
+                filters: equalizer.length > 0 ? { equalizer } : undefined
+            }
+        });
+        await this.saveState().catch(() => null);
+    }
+
+    /**
+     * Seeks to a position in the current track.
+     */
+    public async seek(position: number) {
+        await this.player.seekTo(position);
+        await this.saveState().catch(() => null);
     }
 
     // Shuffle the queue ──────────
@@ -146,6 +570,9 @@ export class MusicPlayer {
 
     public async sendNowPlaying() {
         if (!this.current || !this.textChannelId) return;
+
+        const guild = container.client.guilds.cache.get(this.guildId);
+        if (!guild?.members.me?.voice.channelId) return;
 
         const channel = await container.client.channels.fetch(this.textChannelId).catch(() => null) as TextChannel | null;
         if (!channel) return;
@@ -191,6 +618,28 @@ export class MusicPlayer {
         }
     }
 
+    /**
+     * Refreshes the current player message with the latest state.
+     */
+    public async refresh() {
+        if (!this.lastMessageId || !this.textChannelId) return;
+
+        try {
+            const channel = await container.client.channels.fetch(this.textChannelId).catch(() => null) as TextChannel | null;
+            if (!channel) return;
+
+            const message = await channel.messages.fetch(this.lastMessageId).catch(() => null);
+            if (!message) return;
+
+            const layout = await this.buildLayout(channel.guild);
+            if (layout) {
+                await message.edit(layout as any).catch(() => null);
+            }
+        } catch (error) {
+            // Ignore refresh errors
+        }
+    }
+
 
     // Builds the queue layout ──────────
 
@@ -204,19 +653,25 @@ export class MusicPlayer {
 
         const start = (currentPage - 1) * 10;
         const end = start + 10;
-        const tracks = this.queue.slice(start, end).map((t, i) => ({
-            index: start + i + 1,
-            title: cleanTrackTitle(t.info.title, t.info.author),
-            url: t.info.uri ?? '',
-            author: t.info.author,
-            duration: formatDuration(t.info.length ?? 0)
-        }));
+        const tracks = this.queue.slice(start, end).map((t, i) => {
+            const display = getTrackDisplayMetadata(t);
+
+            return {
+                index: start + i + 1,
+                title: cleanTrackTitle(display.title, display.author),
+                url: t.info.uri ?? '',
+                author: display.author,
+                duration: formatDuration(t.info.length ?? 0)
+            };
+        });
+
+        const currentDisplay = this.current ? getTrackDisplayMetadata(this.current) : null;
 
         return getQueueLayout({
             title: queueTitle,
             nowPlayingLabel,
-            currentTrackTitle: cleanTrackTitle(this.current?.info.title ?? 'None', this.current?.info.author),
-            currentTrackAuthor: this.current?.info.author ?? '',
+            currentTrackTitle: currentDisplay ? cleanTrackTitle(currentDisplay.title, currentDisplay.author) : 'None',
+            currentTrackAuthor: currentDisplay?.author ?? '',
             tracks,
             currentPage,
             totalPages,
@@ -227,9 +682,18 @@ export class MusicPlayer {
 
     // Builds the player layout ──────────
 
+    public async buildControlLayout(guild: any, userId?: string) {
+        return this.buildLayout(guild, userId, true);
+    }
+
+    public async buildNowPlayingLayout(guild: any, userId?: string) {
+        return this.buildLayout(guild, userId, false);
+    }
+
     public async buildLayout(guild: any, userId?: string, showButtons: boolean = true) {
         const track = this.current;
         if (!track || !track.info) return null;
+        const display = getTrackDisplayMetadata(track);
 
         const labels = {
             nowPlaying:  await resolveKey(guild, 'music:labels.nowPlaying'),
@@ -241,14 +705,21 @@ export class MusicPlayer {
             stop:        await resolveKey(guild, 'music:labels.stop'),
             loop:        await resolveKey(guild, 'music:labels.loop'),
             queue:       await resolveKey(guild, 'music:labels.queue'),
-            in:          await resolveKey(guild, 'music:labels.in')
+            in:          await resolveKey(guild, 'music:labels.in'),
+            autoplay:    await resolveKey(guild, 'music:labels.autoplay')
         };
 
-        const thumbnail = track.info.artworkUrl 
-            ?? `https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`;
+        const rawThumbnail = display.artworkUrl 
+            ?? `https://img.youtube.com/vi/${track.info.identifier}/maxresdefault.jpg`;
+
+        // Apply image proxy (weserv.nl) for resizing and optimization
+        // We use the public proxy so Discord can access the images
+        const thumbnail = `https://images.weserv.nl/?url=${encodeURIComponent(rawThumbnail)}&w=512&h=512&fit=cover&a=center`;
 
         if (!this.currentTrackColor) {
-            this.currentTrackColor = await getDominantColor(thumbnail);
+            // If the thumbnail is maxresdefault, we might want to fallback to hqdefault for color extraction 
+            // if maxres doesn't exist, but usually getDominantColor handles errors or we can just try.
+            this.currentTrackColor = await getDominantColor(thumbnail).catch(() => getDominantColor(`https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`));
         }
 
         // Check if track is favorited by the user
@@ -271,13 +742,14 @@ export class MusicPlayer {
 
 
         return getMusicPlayerLayout({
-            title:       cleanTrackTitle(track.info.title, track.info.author),
+            title:       cleanTrackTitle(display.title, display.author),
             url:         track.info.uri ?? '',
             thumbnail:   thumbnail,
-            author:      track.info.author,
+            author:      display.author,
             requestedBy: (track as any).requestedBy ?? 'Unknown',
             isPaused:    this.player.paused,
             isLooping:   this.loop,
+            isAutoplay:  this.autoplay,
             isFavorited,
             position:    this.player.position,
             duration:    track.info.length ?? 0,

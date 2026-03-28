@@ -1,4 +1,15 @@
 {
+  "command": {
+    "banana": {
+      "description": "Cuánto mide tu banana?"
+    },
+    "roll": {
+      "description": "Lanza un dado!",
+      "options": {
+        "max": "Número máximo (por defecto: 6)"
+      }
+    }
+  },
   "banana": {
     "description": "{{emoji}} ¿Cuánto mide tu banana?",
     "response": "{{emoji}} La banana de **{{user}}** mide **{{cm}}cm**.",

@@ -1,6 +1,37 @@
 import { Emojis } from '../constants/emojis';
 
 /**
+ * Parses a timestamp string (MM:SS, HH:MM:SS) to milliseconds
+ * @param input Time string
+ * @returns Milliseconds or null if invalid
+ */
+export function parseTimestamp(input: string): number | null {
+    const parts = input.split(':').reverse();
+    let ms = 0;
+
+    // Seconds
+    const seconds = parseInt(parts[0]);
+    if (isNaN(seconds) || seconds < 0 || seconds >= 60 && parts.length > 1) return null;
+    ms += seconds * 1000;
+
+    // Minutes
+    if (parts.length > 1) {
+        const minutes = parseInt(parts[1]);
+        if (isNaN(minutes) || minutes < 0 || minutes >= 60 && parts.length > 2) return null;
+        ms += minutes * 60 * 1000;
+    }
+
+    // Hours
+    if (parts.length > 2) {
+        const hours = parseInt(parts[2]);
+        if (isNaN(hours) || hours < 0) return null;
+        ms += hours * 60 * 60 * 1000;
+    }
+
+    return ms;
+}
+
+/**
  * Formats milliseconds to MM:SS or HH:MM:SS
  * @param ms Milliseconds
  * @returns Formatted string
@@ -96,7 +127,8 @@ export function parseEmoji(emojiStr: string) {
  * Generates a textual progress bar
  */
 export function getProgressBar(position: number, duration: number, length: number = 8): string {
-    const progress = Math.min(Math.max(position / duration, 0), 1);
+    const safeDuration = duration > 0 ? duration : 1;
+    const progress = Math.min(Math.max(position / safeDuration, 0), 1);
     const filledLength = Math.round(length * progress);
     
     const bar = Emojis.progress_bar_emoji.repeat(filledLength) + Emojis.progress_dot_emoji + Emojis.progress_bar_emoji.repeat(Math.max(0, length - filledLength));

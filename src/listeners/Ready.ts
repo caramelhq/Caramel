@@ -2,6 +2,7 @@ import { Listener } from '@sapphire/framework';
 import { ActivityType, Events } from 'discord.js';
 import { prisma } from '../database/db';
 import { CacheManager } from '../database/CacheManager';
+import { MusicRestorer } from '../lib/utils/MusicRestorer';
 
 
 // Ready listener ──────────────────

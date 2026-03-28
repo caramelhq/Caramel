@@ -1,4 +1,15 @@
 {
+  "command": {
+    "banana": {
+      "description": "How long is your banana?"
+    },
+    "roll": {
+      "description": "Roll a dice!",
+      "options": {
+        "max": "Maximum number (default: 6)"
+      }
+    }
+  },
   "banana": {
     "description": "{{emoji}} How long is your banana?",
     "response": "{{emoji}} **{{user}}**'s banana is **{{cm}}cm** long.",

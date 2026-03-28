@@ -43,6 +43,50 @@ export const Emojis = {
     banana_result_impressive: '<a:impressive:1484969543100010556>',
     banana_result_legendary: '<a:legendary:1484969547524997284>',
 
+    // Discord Badges — standard
+    discord_staff_emoji:         '<:discord_staff:1487341402504429599>',
+    discord_partner_emoji:       '<:discord_partner:1487341393029632051>',
+    hypesquad_events_emoji:      '<:hypesquad_events:1487341391301316628>',
+    bug_hunter_emoji:            '<:bug_hunter:1487341401019650088>',
+    bug_hunter_gold_emoji:       '<:bug_hunter_gold:1487341396103925760>',
+    hypesquad_bravery_emoji:     '<:hypesquad_bravery:1487341571136290897>',
+    hypesquad_brilliance_emoji:  '<:hypesquad_brilliance:1487342314467754154>',
+    hypesquad_balance_emoji:     '<:hypesquad_balance:1487342313071181836>',
+    early_supporter_emoji:       '<:early_supporter:1487341397739831336>',
+    verified_developer_emoji:    '<:early_developer:1487341399035609109>',
+    moderator_alumni_emoji:      '<:moderator_alumni:1487341394614812682>',
+
+    // Discord Badges — Nitro
+    nitro_basic_emoji:           '<:nitro:1487340447494963301>',
+    nitro_classic_emoji:         '<:nitro:1487340447494963301>',
+    nitro_emoji:                 '<:nitro:1487340447494963301>',
+
+    // Discord Badges — Nitro anniversary (evolving tiers)
+    nitro_anniversary_bronze_emoji:   '<:nitro_bronze:1487340461503807498>',
+    nitro_anniversary_silver_emoji:   '<:nitro_silver:1487340472753066064>',
+    nitro_anniversary_gold_emoji:     '<:nitro_gold:1487340486275502142>',
+    nitro_anniversary_platinum_emoji: '<:nitro_platinum:1487340496706736258>',
+    nitro_anniversary_diamond_emoji:  '<:nitro_diamond:1487340507469189181>',
+    nitro_anniversary_emerald_emoji:  '<:nitro_emerald:1487340518940737646>',
+    nitro_anniversary_ruby_emoji:     '<:nitro_ruby:1487340528814264430>',
+    nitro_anniversary_opal_emoji:     '<:nitro_opal:1487340540230897764>',
+
+    // Discord Badges — Server Booster tiers (1–9)
+    nitro_boost_1m_emoji: '<:nitro_boost_1m:1487345316880584825>',
+    nitro_boost_2m_emoji: '<:nitro_boost_2m:1487345327638970459>',
+    nitro_boost_3m_emoji: '<:nitro_boost_3m:1487345337650774096>',
+    nitro_boost_6m_emoji: '<:nitro_boost_6m:1487345346815201350>',
+    nitro_boost_9m_emoji: '<:nitro_boost_9m:1487345360719577148>',
+    nitro_boost_12m_emoji: '<:nitro_boost_12m:1487345375210766376>',
+    nitro_boost_15m_emoji: '<:nitro_boost_15m:1487345384400490526>',
+    nitro_boost_18m_emoji: '<:nitro_boost_18m:1487345396866093197>',
+    nitro_boost_24m_emoji: '<:nitro_boost_24m:1487345406311403630>',
+
+    // Discord Badges — Quests & Orbs
+    discord_quest_emoji:  '<:quest:1355300000000000031>',
+    discord_orbs_emoji:   '<:discord_orbs:1487346291586502806>',
+    discord_alias_emoji:  '<:discord_alias:1487346295596388404>',
+
     // Check/Cross/Status
     check_emoji: '<:check_mark:1485079470166511777>',
     cross_emoji: '<:cross_mark:1485079301136318484>',
@@ -62,6 +106,8 @@ export const Emojis = {
     thresholds_emoji: '<:threshold:1485107434673410059>',
 
     // Music
+    autoplay_emoji: '<:autoplay:1485368043021406241>',
+    search_emoji: '<:search:1485440399773401168>',
     play_emoji: '<:play_button:1485080737261818056>',
     pause_emoji: '<:pause_button:1485080735491555589>',
     stop_emoji: '<:leave_button:1485080728583540796>',
@@ -72,10 +118,17 @@ export const Emojis = {
     progress_bar_emoji: '<:progress_bar:1485114499890544882>',
     queue_emoji: '<:queue_button:1485081827122352128>',
     music_emoji: '<:music:1485110826905108572>',
+    volume_emoji: '<:volume:1485723741353938974>',
     prev_page_emoji: '<:arrow_left:1485076955681521887>',
     next_page_emoji: '<:arrow_right:1485076968566296656>',
     favorite_song_emoji: '<:favorite_button:1485113639873548449>',
     unfavorite_song_emoji: '<:unfavorite_button:1485113651055825007>',
+
+    preview_emoji: '<:preview:1486531367146618890>',
+    logs_emoji: '<:logs:1486533269385248899>',
+    logs_disabled_emoji: '<:logs_disabled:1486533267900469311>',
+    white_check_mark_emoji: '<:white_check_mark:1486539433321693265>',
+    white_cross_mark_emoji: '<:white_cross_mark:1486539981508841523>',
 
 } as const;
 

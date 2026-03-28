@@ -1,20 +1,208 @@
 {
   "config": {
     "language": {
+      "command": {
+        "description": "Change the bot language."
+      },
+      "optionDescription": "Select the new language",
+      "display": {
+        "english": "English",
+        "spanish": "Español"
+      },
       "invalid": "{{cross}} Invalid language. Available: `en`, `es`.",
       "success": "{{check}} Language updated to **{{lang}}**."
+    },
+    "prefix": {
+      "command": {
+        "description": "Change the bot prefix for this server"
+      },
+      "optionDescription": "The new prefix (max 5 chars, no spaces)",
+      "invalid": "{{cross}} The prefix must be between 1 and 5 characters and cannot contain spaces.",
+      "success": "{{check}} The prefix has been updated to: `{{prefix}}`"
     }
   },
   "module": {
+    "command": {
+      "description": "Manage CaramelLabs system modules",
+      "subcommands": {
+        "setup": "Configure a specific module",
+        "settings": "Show detailed configuration",
+        "enable": "Enable a module",
+        "disable": "Disable a module",
+        "reset": "Factory reset a module"
+      },
+      "options": {
+        "moduleNameSetup": "The name of the module",
+        "moduleName": "Module name"
+      }
+    },
     "notFound": "{{cross}} Module not found.",
     "alreadyEnabled": "{{cross}} The module **{{name}}** is already enabled.",
     "alreadyDisabled": "{{cross}} The module **{{name}}** is already disabled.",
+    "displayNames": {
+      "vanity": "Vanity Tracker",
+      "mod": "Moderation",
+      "automod": "AutoMod",
+      "logs": "Advanced Logs"
+    },
+    "errors": {
+      "validatorNotFound": "`❌` Internal error: validator not found.",
+      "needsLogChannel": "`❌` **{{name}}** module needs a log channel before being enabled. Run `/module setup` first.",
+      "cannotEnable": "`❌` **{{name}}** module cannot be enabled:",
+      "setupFirst": "Run `/module setup` first."
+    },
     "enabled": "enabled",
     "disabled": "disabled",
     "enableSuccess": "The module **{{name}}** has been enabled.",
     "disableSuccess": "The module **{{name}}** has been disabled.",
     "resetSuccess": "{{check}} The module **{{name}}** has been reset.",
-    "setupSuccess": "{{check}} The module **{{name}}** has been configured."
+    "setupSuccess": "{{check}} The module **{{name}}** has been configured.",
+    "setup": {
+      "confirm": {
+        "description": "Caramel will perform the following actions to set up the **{{title}}** module:",
+        "button": "Confirm Setup",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "setupCancelled": "❌ Setup cancelled.",
+        "setupAborted": "❌ Setup aborted.",
+        "setupFailed": "❌ Setup failed. Please try again.",
+        "setupTimedOut": "⏱️ Setup timed out. Please try again.",
+        "roleIdNotFound": "`❌` The role ID provided does not exist.",
+        "channelIdNotFound": "`❌` The channel ID provided does not exist."
+      },
+      "summary": {
+        "completeHint": "Setup complete. You can now enable the module with `/module enable`.",
+        "setKeyword": "Set keyword: `{{keyword}}`",
+        "keywordSet": "Keyword set to `{{keyword}}`",
+        "channelLinked": "Channel linked: <#{{id}}>",
+        "channelCreated": "Channel created: <#{{id}}>",
+        "roleLinked": "Role linked: <@&{{id}}>",
+        "roleCreated": "Role created: <@&{{id}}>"
+      },
+      "actions": {
+        "createRole": "Create role: **{{name}}**",
+        "useRole": "Use existing role: {{name}}",
+        "createChannel": "Create channel: **#{{name}}**",
+        "useChannel": "Use existing channel: <#{{id}}>"
+      },
+      "automod": {
+        "modal": {
+          "title": "AutoMod Setup",
+          "confirmLabel": "Enable AutoMod features?",
+          "confirmPlaceholder": "Type \"Yes\" to confirm",
+          "confirmDefault": "Yes"
+        },
+        "preview": {
+          "initialize": "Initialize AutoMod module",
+          "unlockCommands": "Unlock /automod commands"
+        },
+        "summary": {
+          "initialized": "AutoMod module initialized.",
+          "hint": "You can now use `/automod rule add` to start filtering."
+        }
+      },
+      "vanity": {
+        "modal": {
+          "title": "Vanity Tracker Setup",
+          "keywordLabel": "Status keyword (required)",
+          "keywordPlaceholder": "e.g. discord.gg/meetspace",
+          "roleLabel": "Role ID or name (optional)",
+          "rolePlaceholder": "Vanity role | Leave empty to auto-create",
+          "channelLabel": "Channel ID or name (optional)",
+          "channelPlaceholder": "Log channel | Leave empty to auto-create"
+        }
+      },
+      "mod": {
+        "modal": {
+          "title": "Moderation Setup",
+          "logChannelLabel": "Log channel ID or name (optional)",
+          "logChannelPlaceholder": "Leave empty to auto-create #mod-logs",
+          "mutedRoleLabel": "Muted role ID or name (optional)",
+          "mutedRolePlaceholder": "Leave empty to auto-create a muted role",
+          "thresholdsLabel": "Enable thresholds? (Yes/No)",
+          "thresholdsPlaceholder": "Yes",
+          "thresholdsValueEnabled": "Yes",
+          "thresholdsValueDisabled": "No"
+        },
+        "summary": {
+          "thresholds": "Thresholds: **{{status}}**",
+          "mutedOverwrites": "Muted overwrites synced: **{{updated}}** channels",
+          "mutedOverwritesWithFailures": "Muted overwrites synced: **{{updated}}** channels ({{failed}} failed)"
+        }
+      },
+      "logs": {
+        "messages": {
+          "alreadyActive": "You already have an active logs setup session.",
+          "anotherAdmin": "Another admin is currently configuring logs. Try again in a few minutes.",
+          "sessionExpired": "This setup session has expired. Run /module setup logs again.",
+          "cancelled": "Logs setup cancelled.",
+          "manualOnly": "Block toggles are only available in manual mode.",
+          "guildMissing": "Guild context is missing.",
+          "autoApplied": "Automatic logs setup applied. Created/linked {{count}} event channels across {{categories}} blocks.",
+          "activeBlockOpen": "You already have an active block config open ({{block}}). Finish it before opening another.",
+          "noSelectedBlock": "No block selected.",
+          "completeBlockFirst": "Complete all events for this block first.",
+          "selectBlockEventFirst": "Select block and event first.",
+          "selectCategoryEventChannelFirst": "Select block, event and channel first.",
+          "finishActiveBlockFirst": "Finish the active block configuration first.",
+          "completed": "Logs setup completed. Configured {{count}} event routes across {{categories}} blocks."
+        },
+        "wizard": {
+          "page1": {
+            "title": "Logs Setup",
+            "selectBlocks": "Select the blocks you want to log:",
+            "cancel": "Cancel",
+            "continue": "Continue"
+          },
+          "page2": {
+            "selectBlocks": "Select the remaining blocks:",
+            "back": "Back",
+            "continue": "Continue"
+          },
+          "page3": {
+            "selectBlocks": "Select the remaining blocks:",
+            "back": "Back",
+            "finish": "Finish"
+          },
+          "blockConfig": {
+            "selectEvents": "Select the events you want to log for this category:",
+            "autoCreate": "Auto-create a channel or select an existing one",
+            "selectChannel": "Select an existing channel ▾",
+            "cancel": "Cancel",
+            "customizing": "Customizing: {{block}}",
+            "done": "Done"
+          },
+          "review": {
+            "title": "Configuration Summary",
+            "description": "This is what {{bot}} will apply.",
+            "selectedBlocks": "Selected blocks",
+            "channelsToCreate": "Channels to create",
+            "totalEvents": "Total events",
+            "cancel": "Cancel",
+            "apply": "Apply",
+            "autoCreate": "auto-create",
+            "existing": "existing"
+          }
+        }
+      }
+    },
+    "reset": {
+      "title": "Reset {{name}}",
+      "description": "This will wipe all **{{name}}** module configuration from this server.",
+      "confirm": "Yes, reset",
+      "cancel": "Cancel",
+      "success": "✅ Module **{{name}}** has been reset.",
+      "cancelled": "❌ Reset cancelled.",
+      "timedOut": "⏱️ Timed out. No response received.",
+      "deletions": {
+        "deleteChannel": "delete:Channel <#{{id}}>",
+        "unlinkChannel": "unlink:Channel <#{{id}}>",
+        "deleteRole": "delete:Role <@&{{id}}>",
+        "unlinkRole": "unlink:Role <@&{{id}}>",
+        "configOnly": "unlink:Configuration data only"
+      }
+    }
   },
   "prefix": {
     "invalid": "{{cross}} The prefix must be between 1 and 5 characters and cannot contain spaces.",

@@ -10,6 +10,10 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
+    "lavalink:start": "java -jar Lavalink.jar",
+    "bot:dev": "tsx watch src/index.ts",
+    "bot:start": "node dist/index.js",
+    "bot:build": "tsc",
     "web:dev": "npm run dev --workspace=web",
     "web:build": "npm run build --workspace=web",
     "web:start": "npm run start --workspace=web"

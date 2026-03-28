@@ -13,7 +13,9 @@ export function getAutoModLayout(data: {
         flags: 32768,
         components: [
             ContainerComponent([
-                TextDisplayComponent(`### ${data.title}\n${data.description}`),
+                SectionComponent([
+                    TextDisplayComponent(`### ${data.title}\n${data.description}`)
+                ]),
                 ...(data.rules?.length ? [
                     SeparatorComponent(1, true),
                     TextDisplayComponent(data.rules.map(r => 
@@ -44,7 +46,7 @@ export function getAutoModPreviewLayout(data: {
 
     // Rule Status Lines
     const ruleLines = data.rules.map(r => {
-        let emoji = Emojis.bullet_emoji;
+        let emoji: string = Emojis.bullet_emoji;
         if (r.status === 'enabled') emoji = Emojis.enabled_setting_emoji;
         if (r.status === 'disabled') emoji = Emojis.bullet_emoji; // Or disabled emoji if preferred
         if (r.status === 'error') emoji = Emojis.disabled_setting_emoji;
@@ -72,7 +74,6 @@ export function getAutoModPreviewLayout(data: {
  * Layout for the AutoMod Preset Import UI (Deprecated/Fallback)
  */
 export function getAutoModImportLayout(data: {
-// ... existing code ...
     currentRules: number;
     presetRules: number;
     canImport: boolean;
@@ -88,13 +89,15 @@ export function getAutoModImportLayout(data: {
         flags: 32768,
         components: [
             ContainerComponent([
-                TextDisplayComponent(
-                    `### ${Emojis.static_setting_emoji} AutoMod Preset: ${data.topic || 'Selection'}\n` +
-                    `Checking available space in your server...\n\n` +
-                    `• Current Rules: **${data.currentRules}/100**\n` +
-                    `• Preset Rules: **+${data.presetRules}**\n` +
-                    `• Total: **${total}/100** ${isOverLimit ? Emojis.cross_emoji : Emojis.check_emoji}`
-                ),
+                SectionComponent([
+                    TextDisplayComponent(
+                        `### ${Emojis.static_setting_emoji} AutoMod Preset: ${data.topic || 'Selection'}\n` +
+                        `Checking available space in your server...\n\n` +
+                        `• Current Rules: **${data.currentRules}/100**\n` +
+                        `• Preset Rules: **+${data.presetRules}**\n` +
+                        `• Total: **${total}/100** ${isOverLimit ? Emojis.cross_emoji : Emojis.check_emoji}`
+                    )
+                ]),
                 SeparatorComponent(1, true),
                 TextDisplayComponent(
                     isOverLimit 

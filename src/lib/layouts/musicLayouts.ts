@@ -1,6 +1,50 @@
 import { Emojis } from '../constants/emojis';
 import { cleanTrackTitle, escapeMarkdown, parseEmoji, getProgressBar } from '../utils/MusicUtils';
-import { ContainerComponent, TextDisplayComponent, SeparatorComponent, SectionComponent, ThumbnailComponent, ActionRowComponent, ButtonComponent } from './ui';
+import { ContainerComponent, TextDisplayComponent, SeparatorComponent, SectionComponent, ThumbnailComponent, ActionRowComponent, ButtonComponent, StringSelectComponent } from './ui';
+
+export function getSearchLayout(data: {
+    query: string;
+    tracks: { title: string; author: string; album?: string; identifier: string; uri: string; artworkUrl?: string }[];
+    labels: {
+        title: string;
+        placeholder: string;
+        author: string;
+        album: string;
+    }
+}) {
+    const components: any[] = [
+        TextDisplayComponent(`## ${Emojis.search_emoji} ${data.labels.title}: \`${data.query}\``)
+    ];
+
+    for (const track of data.tracks.slice(0, 5)) {
+        const cleanedTitle = cleanTrackTitle(track.title, track.author);
+        const songUrl = track.uri;
+        const albumName = track.album || '—';
+        
+        const rawThumbnail = track.artworkUrl ?? `https://img.youtube.com/vi/${track.identifier}/hqdefault.jpg`;
+        const thumbnail = `https://images.weserv.nl/?url=${encodeURIComponent(rawThumbnail)}&w=512&h=512&fit=cover&a=center`;
+
+        components.push(SeparatorComponent(1, true));
+        components.push(SectionComponent(
+            [TextDisplayComponent(`[${escapeMarkdown(cleanedTitle)}](${songUrl})\n\n**${data.labels.author}:** ${track.author}\n**${data.labels.album}:** ${albumName}`)],
+            ThumbnailComponent(thumbnail)
+        ));
+    }
+
+    const options = data.tracks.slice(0, 5).map((t, i) => ({
+        label: cleanTrackTitle(t.title, t.author).substring(0, 100),
+        value: `search_select_${t.identifier}`,
+        description: t.author.substring(0, 100),
+        emoji: parseEmoji(Emojis.music_emoji)
+    }));
+
+    components.push(SeparatorComponent(1, true));
+    components.push(ActionRowComponent([
+        StringSelectComponent('music_search_selector', options, data.labels.placeholder)
+    ]));
+
+    return { flags: 32768, components: [ContainerComponent(components)] };
+}
 
 export function getMusicPlayerLayout(data: {
     title: string;
@@ -13,6 +57,7 @@ export function getMusicPlayerLayout(data: {
     isFavorited?: boolean;
     position: number;
     duration: number;
+    isAutoplay: boolean;
     voiceChannelId?: string;
     showButtons?: boolean;
     accentColor?: number;
@@ -27,6 +72,7 @@ export function getMusicPlayerLayout(data: {
         loop: string;
         queue: string;
         in: string;
+        autoplay: string;
     }
 }) {
     const cleanedTitle = cleanTrackTitle(data.title, data.author);
@@ -49,20 +95,23 @@ export function getMusicPlayerLayout(data: {
 
     const requestedByLine = data.showButtons !== false ? `\n-# ${data.labels.requestedBy}: <@${data.requestedBy}>` : '';
     const inLine = data.showButtons === false && data.voiceChannelId ? `\n**${data.labels.in}**: <#${data.voiceChannelId}>` : '';
+    const mainEmoji = data.isAutoplay ? Emojis.autoplay_emoji : Emojis.music_emoji;
 
     const components: any[] = [
         SectionComponent(
-            [TextDisplayComponent(`${Emojis.music_emoji} **${data.labels.nowPlaying}**\n${titleDisplay}\n\n**${data.labels.author}**: ${data.author}${inLine}${requestedByLine}`)],
+            [TextDisplayComponent(`${mainEmoji} **${data.labels.nowPlaying}**\n${titleDisplay}\n\n**${data.labels.author}**: ${data.author}${inLine}${requestedByLine}`)],
             ThumbnailComponent(data.thumbnail)
         )
     ];
 
     if (data.showButtons === false) {
+        // NowPlaying Mode: Show Progress Bar + Favorite Button
         components.push(SectionComponent(
             [TextDisplayComponent(progressBarString)],
-            { type: 2, style: 2, custom_id: 'music_favorite', emoji: parseEmoji(data.isFavorited ? Emojis.unfavorite_song_emoji : Emojis.favorite_song_emoji) }
+            ButtonComponent('music_favorite', '', 2, parseEmoji(data.isFavorited ? Emojis.unfavorite_song_emoji : Emojis.favorite_song_emoji))
         ));
     } else {
+        // Control Mode: Show Action Row with 5 main buttons
         components.push(SeparatorComponent(1, true));
         components.push(ActionRowComponent([
             ButtonComponent('music_pause', '', data.isPaused ? 2 : 2, parseEmoji(data.isPaused ? Emojis.play_emoji : Emojis.pause_emoji)),
@@ -87,8 +136,7 @@ export function getQueueLayout(data: {
     totalTracks: number;
 }) {
     const components: any[] = [
-        TextDisplayComponent(`${Emojis.queue_emoji} **${data.title}**`),
-        TextDisplayComponent(`**${data.nowPlayingLabel}**: ${cleanTrackTitle(data.currentTrackTitle, data.currentTrackAuthor)}`),
+        TextDisplayComponent(`## ${Emojis.queue_emoji} ${data.title}\n**${data.nowPlayingLabel}**: ${cleanTrackTitle(data.currentTrackTitle, data.currentTrackAuthor)}`),
         SeparatorComponent(1, true)
     ];
 
@@ -101,6 +149,7 @@ export function getQueueLayout(data: {
     components.push(TextDisplayComponent(queueContent));
 
     if (data.totalPages > 1) {
+        components.push(SeparatorComponent(1, false));
         components.push(ActionRowComponent([
             ButtonComponent(`music_queue_prev_${data.currentPage}`, '', 2, parseEmoji(Emojis.prev_page_emoji), data.currentPage === 1),
             ButtonComponent('music_queue_page_display', `${data.currentPage}/${data.totalPages}`, 2, undefined, true),
@@ -120,7 +169,7 @@ export function getLyricsLayout(data: {
     accentColor?: number;
 }) {
     const components: any[] = [
-        TextDisplayComponent(`${Emojis.music_emoji} **${data.title}**`),
+        TextDisplayComponent(`## ${Emojis.music_emoji} ${data.title}`),
         SeparatorComponent(1, true),
         TextDisplayComponent(data.lyrics),
         SeparatorComponent(1, false),
@@ -128,6 +177,7 @@ export function getLyricsLayout(data: {
     ];
 
     if (data.totalPages > 1) {
+        components.push(SeparatorComponent(1, false));
         components.push(ActionRowComponent([
             ButtonComponent(`music_lyrics_prev_${data.currentPage}`, '', 2, parseEmoji(Emojis.prev_page_emoji), data.currentPage === 1),
             ButtonComponent('music_lyrics_page_display', `${data.currentPage}/${data.totalPages}`, 2, undefined, true),

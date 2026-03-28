@@ -96,6 +96,7 @@ export class AutoModListener extends Listener {
                         userId: author.id,
                         userTag: author.tag,
                         moderatorId: this.container.client.user!.id,
+                        guild: guild!,
                         action: 'kick',
                         reason,
                         isAutomatic: true
@@ -111,6 +112,7 @@ export class AutoModListener extends Listener {
                         userId: author.id,
                         userTag: author.tag,
                         moderatorId: this.container.client.user!.id,
+                        guild: guild!,
                         action: 'ban',
                         reason,
                         isAutomatic: true
@@ -126,6 +128,7 @@ export class AutoModListener extends Listener {
                     userId: author.id,
                     userTag: author.tag,
                     moderatorId: this.container.client.user!.id,
+                    guild: guild!,
                     action: 'warn', // Log as a warning
                     reason,
                     isAutomatic: true

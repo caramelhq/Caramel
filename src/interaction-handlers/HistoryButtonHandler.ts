@@ -30,7 +30,7 @@ export class HistoryButtonHandler extends InteractionHandler {
             throw new CaramelUserError('infocommands:errors.notYourButton');
         }
 
-        await interaction.deferReply({ ephemeral: false });
+        await interaction.deferReply();
 
         const logs = await prisma.modLog.findMany({
             where: { guildId: interaction.guildId!, userId: targetId },

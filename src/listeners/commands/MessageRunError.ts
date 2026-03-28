@@ -6,6 +6,13 @@ import { getMessageLayout } from '../../lib/layouts/defaultLayout';
 
 import { Emojis } from '../../lib/constants/emojis';
 
+const TRANSIENT_MOD_ERROR_KEYS = new Set([
+    'modcommands:mod.mute.alreadyMuted',
+    'modcommands:mod.mute.hasTimeoutProceedWithForce',
+    'modcommands:mod.timeout.alreadyTimedOut',
+    'modcommands:mod.timeout.hasMuteProceedWithForce'
+]);
+
 @ApplyOptions<Listener.Options>({
     event: Events.MessageCommandError
 })
@@ -41,7 +48,15 @@ export class MessageRunErrorListener extends Listener {
         // 2. Expected User Errors (Validations)
         if (error instanceof CaramelUserError) {
             const content = await resolveKey(message, error.identifier, { ...defaultContext, ...error.context as any });
-            return message.reply({ ...getMessageLayout(content) });
+            const reply = await message.reply({ ...getMessageLayout(content) });
+
+            if (TRANSIENT_MOD_ERROR_KEYS.has(error.identifier)) {
+                setTimeout(() => {
+                    reply.delete().catch(() => null);
+                }, 10000);
+            }
+
+            return reply;
         }
 
         // 3. Unexpected Errors (System/Logic)

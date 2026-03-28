@@ -1,5 +1,6 @@
 import { container } from '@sapphire/framework';
-import type { GuildConfig } from '@prisma/client';
+import type { BotCommander, GuildConfig, ModPermission } from '@prisma/client';
+import { MusicCacheTtlSeconds } from '../lib/constants/musicUi';
 
 
 // Cache manager ──────────────────
@@ -58,6 +59,55 @@ export class CacheManager {
         } catch (error) {
             logger.error(`[CACHE_MANAGER] Failed to sync guild ${guildId}:`, error);
         }
+    }
+
+
+    // User Favorites (Music) ──────────
+
+    /**
+     * Retrieves cached user favorites for music.
+     * Returns null if not cached.
+     */
+    public static async getUserFavorites(userId: string): Promise<any[] | null> {
+        const { redis } = container;
+        const data = await redis.get(`user:favorites:${userId}`);
+        return data ? JSON.parse(data) : null;
+    }
+
+    /**
+     * Caches user favorites for music with a 24h TTL.
+     */
+    public static async setUserFavorites(userId: string, favorites: any[]) {
+        const { redis } = container;
+        await redis.set(`user:favorites:${userId}`, JSON.stringify(favorites), 'EX', MusicCacheTtlSeconds.userFavorites);
+    }
+
+    /**
+     * Invalidates the user favorites cache.
+     */
+    public static async invalidateUserFavorites(userId: string) {
+        const { redis } = container;
+        await redis.del(`user:favorites:${userId}`);
+    }
+
+
+    // Search Results (Music) ──────────
+
+    /**
+     * Retrieves cached search results for music.
+     */
+    public static async getSearchResult(query: string): Promise<any[] | null> {
+        const { redis } = container;
+        const data = await redis.get(`music:search:${query.toLowerCase()}`);
+        return data ? JSON.parse(data) : null;
+    }
+
+    /**
+     * Caches search results for music with a 5m TTL.
+     */
+    public static async setSearchResult(query: string, results: any[]) {
+        const { redis } = container;
+        await redis.set(`music:search:${query.toLowerCase()}`, JSON.stringify(results), 'EX', MusicCacheTtlSeconds.searchResults);
     }
 
 
@@ -180,6 +230,58 @@ export class CacheManager {
         const { redis } = container;
         const prefix = await redis.get(`general:prefix:${guildId}`);
         return prefix ?? process.env.PREFIX ?? 'c!';
+    }
+
+
+    // Mod Permissions ──────────
+
+    /**
+     * Returns all ModPermission rows for a guild.
+     * Redis key: mod:perms:<guildId> — JSON array, TTL 5 minutes.
+     * Always checks cache first before hitting Prisma.
+     */
+    public static async getModPermissions(guildId: string): Promise<ModPermission[]> {
+        const { redis } = container;
+        const cached = await redis.get(`mod:perms:${guildId}`);
+        if (cached) return JSON.parse(cached);
+        const perms = await container.db.modPermission.findMany({ where: { guildId } });
+        await redis.set(`mod:perms:${guildId}`, JSON.stringify(perms), 'EX', 300);
+        return perms;
+    }
+
+    /**
+     * Invalidates the mod permissions cache for a guild.
+     * Must be called after any upsert/delete on ModPermission.
+     */
+    public static async invalidateModPermissions(guildId: string): Promise<void> {
+        const { redis } = container;
+        await redis.del(`mod:perms:${guildId}`);
+    }
+
+
+    // Bot Commanders ──────────
+
+    /**
+     * Returns all BotCommander rows for a guild.
+     * Redis key: bot:commanders:<guildId> — JSON array, TTL 5 minutes.
+     * Always checks cache first before hitting Prisma.
+     */
+    public static async getBotCommanders(guildId: string): Promise<BotCommander[]> {
+        const { redis } = container;
+        const cached = await redis.get(`bot:commanders:${guildId}`);
+        if (cached) return JSON.parse(cached);
+        const commanders = await container.db.botCommander.findMany({ where: { guildId } });
+        await redis.set(`bot:commanders:${guildId}`, JSON.stringify(commanders), 'EX', 300);
+        return commanders;
+    }
+
+    /**
+     * Invalidates the bot commanders cache for a guild.
+     * Must be called after any upsert/delete on BotCommander.
+     */
+    public static async invalidateBotCommanders(guildId: string): Promise<void> {
+        const { redis } = container;
+        await redis.del(`bot:commanders:${guildId}`);
     }
 
 

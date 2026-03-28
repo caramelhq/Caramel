@@ -46,6 +46,6 @@ export class InteractionHandlerErrorListener extends Listener {
         if (interaction.deferred || interaction.replied) {
             return await interaction.editReply({ ...layout });
         }
-        return await interaction.reply({ ...layout, ephemeral: true });
+        return await interaction.reply({ ...layout, flags: ['Ephemeral', 'IsComponentsV2'] });
     }
 }

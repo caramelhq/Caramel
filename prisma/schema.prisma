@@ -196,6 +196,8 @@ model ModLog {
     updatedAt   DateTime @updatedAt @map("updated_at")
 
     @@index([guildId, userId], name: "modlog_guild_user")
+    @@index([guildId, caseNumber], name: "modlog_guild_case_lookup")
+    @@index([guildId, userId, isAutomatic, action, createdAt], name: "modlog_threshold_lookup")
     @@map("mod_logs")
 }
 
@@ -221,17 +223,62 @@ model ActiveMute {
 }
 
 // ─────────────────────────────────────────────
+//  ModPermission
+// ─────────────────────────────────────────────
+
+model ModPermission {
+    id         String     @id @default(cuid())
+    guildId    String     @map("guild_id")
+    targetId   String     @map("target_id")
+    targetType TargetType @map("target_type")
+    action     String
+    type       PermType
+
+    @@unique([guildId, targetId, action], name: "guildId_targetId_action")
+    @@index([guildId])
+    @@map("mod_permissions")
+}
+
+enum TargetType {
+    ROLE
+    MEMBER
+}
+
+enum PermType {
+    ALLOW
+    DENY
+}
+
+
+// ─────────────────────────────────────────────
+//  BotCommander
+// ─────────────────────────────────────────────
+
+model BotCommander {
+    id         String     @id @default(cuid())
+    guildId    String     @map("guild_id")
+    targetId   String     @map("target_id")
+    targetType TargetType @map("target_type")
+
+    @@unique([guildId, targetId], name: "bot_commander_guild_target_unique")
+    @@index([guildId])
+    @@map("bot_commanders")
+}
+
+
+// ─────────────────────────────────────────────
 //  UserFavorite
 // ─────────────────────────────────────────────
 
 model UserFavorite {
-    id          Int      @id @default(autoincrement())
-    userId      String   @map("user_id")
-    trackTitle  String   @map("track_title")
-    trackUrl    String   @map("track_url")
-    author      String   @map("author")
+    id            Int      @id @default(autoincrement())
+    userId        String   @map("user_id")
+    trackTitle    String   @map("track_title")
+    trackUrl      String   @map("track_url")
+    author        String   @map("author")
+    trackDuration String   @map("track_duration")
     
-    createdAt   DateTime @default(now()) @map("created_at")
+    createdAt     DateTime @default(now()) @map("created_at")
 
     @@unique([userId, trackUrl])
     @@index([userId])

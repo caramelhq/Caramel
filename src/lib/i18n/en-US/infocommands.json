@@ -1,4 +1,19 @@
 {
+  "command": {
+    "history": {
+      "description": "View sanction history of a user",
+      "options": {
+        "user": "User to check (defaults to you)",
+        "userId": "User ID (defaults to you)"
+      }
+    },
+    "user": {
+      "description": "Get information about a user",
+      "options": {
+        "target": "The user to inspect"
+      }
+    }
+  },
   "history": {
     "usage": "<user|user_id>",
     "specifyUser": "{{cross}} Please specify a user or a valid user ID.",
@@ -9,6 +24,7 @@
     "notYourButton": "{{cross}} You cannot interact with this button because you did not execute the command.",
     "labels": {
       "badges": "Badges",
+      "clan": "Clan",
       "general": "General Information",
       "id": "ID",
       "created": "Created",
@@ -17,7 +33,12 @@
       "modHistory": "Moderation History",
       "viewHistory": "View History",
       "addNote": "Add Note",
-      "permissions": "Key Permissions"
+      "permissions": "Key Permissions",
+      "joinedDiscord": "Joined Discord",
+      "joinedServer": "Joined Server",
+      "highestRole": "Highest Role",
+      "notInServer": "Not in server",
+      "none": "None"
     }
   }
 }

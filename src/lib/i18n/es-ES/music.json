@@ -1,19 +1,92 @@
 {
+  "command": {
+    "autoplay": {
+      "description": "Activa o desactiva autoplay para reproducir recomendaciones automáticamente"
+    },
+    "filter": {
+      "description": "Aplica filtros de audio al reproductor",
+      "options": {
+        "type": "Filtro a aplicar"
+      }
+    },
+    "loop": {
+      "description": "Activa o desactiva el bucle de la canción actual"
+    },
+    "lyrics": {
+      "description": "Busca la letra de la canción actual o una consulta",
+      "options": {
+        "query": "Canción a buscar (Artista - Título)"
+      }
+    },
+    "move": {
+      "description": "Mueve una canción a otra posición en la cola",
+      "options": {
+        "from": "Posición actual de la canción",
+        "to": "Nueva posición de la canción"
+      }
+    },
+    "nowPlaying": {
+      "description": "Muestra la canción que se está reproduciendo"
+    },
+    "pause": {
+      "description": "Pausa o reanuda la reproducción"
+    },
+    "play": {
+      "description": "Reproduce una canción o playlist",
+      "options": {
+        "query": "Nombre de canción o URL"
+      }
+    },
+    "queue": {
+      "description": "Muestra la cola actual"
+    },
+    "remove": {
+      "description": "Elimina una canción de la cola",
+      "options": {
+        "position": "Posición de la canción en la cola"
+      }
+    },
+    "seek": {
+      "description": "Salta a un tiempo específico de la canción actual",
+      "options": {
+        "time": "Tiempo al que saltar (ej., 1:30, 01:20:00)"
+      }
+    },
+    "shuffle": {
+      "description": "Mezcla la cola actual"
+    },
+    "skip": {
+      "description": "Salta la canción actual"
+    },
+    "stop": {
+      "description": "Detiene la reproducción y limpia la cola"
+    },
+    "volume": {
+      "description": "Ajusta el volumen del reproductor",
+      "options": {
+        "value": "Nivel de volumen (0-200)"
+      }
+    }
+  },
   "play": {
-    "noChannel": "{{cross}} Debes estar en un canal de voz para usar este comando.",
-    "wrongChannel": "{{cross}} Debes estar en el mismo canal de voz que el bot.",
-    "noResults": "{{cross}} No se encontraron resultados para esa búsqueda.",
+    "noChannel": "Debes estar en un canal de voz para usar este comando.",
+    "wrongChannel": "Debes estar en el mismo canal de voz que el bot.",
+    "noResults": "No se encontraron resultados para esa búsqueda.",
     "loaded": "Añadida a la cola: **{{title}}**",
-    "playlistLoaded": "Se han cargado **{{count}}** canciones de la lista **{{name}}**."
+    "playlistLoaded": "Se han cargado **{{count}}** canciones de la lista **{{name}}**.",
+    "spotifyFallbackName": "Fallback de Spotify (YouTube)",
+    "onlyRequester": "¡Solo la persona que pidió esta canción puede añadirla a favoritos!"
   },
   "controls": {
-    "noTrack": "{{cross}} No hay ninguna canción reproduciéndose ahora mismo.",
+    "noTrack": "No hay ninguna canción reproduciéndose ahora mismo.",
     "skip": "Pista saltada.",
     "stop": "Reproducción detenida.",
     "loopEnabled": "Bucle habilitado.",
     "loopDisabled": "Bucle deshabilitado.",
-    "paused": "Music paused.",
-    "resumed": "Music resumed.",
+    "paused": "Música pausada.",
+    "resumed": "Música reanudada.",
+    "autoplayEnabled": "¡Autoplay activado! Caramel buscará canciones similares por ti. ✨",
+    "autoplayDisabled": "Autoplay desactivado. 🔇",
     "shuffle": "¡La cola ha sido mezclada!",
     "favoriteAdded": "¡Añadida a favoritos!",
     "favoriteRemoved": "Eliminada de favoritos.",
@@ -23,6 +96,7 @@
     "nowPlaying": "Reproduciendo Ahora",
     "requestedBy": "Pedido por",
     "author": "Autor",
+    "album": "Álbum",
     "track": "Pista",
     "queue": "Cola de Reproducción",
     "status": "Estado",
@@ -31,16 +105,43 @@
     "skip": "Saltar",
     "stop": "Detener",
     "loop": "Bucle",
-    "in": "En"
-    },
-
+    "autoplay": "Autoplay",
+    "in": "En",
+    "search": "Resultados de Búsqueda",
+    "searchPlaceholder": "Selecciona una canción..."
+  },
   "lyrics": {
-  "noResults": "{{cross}} No se encontró la letra de esa canción.",
-  "title": "Letra de: {{title}}",
-  "searching": "{{emoji}} Buscando letra...",
-  "footer": "Página {{current}} de {{total}}"
+    "noResults": "No se encontró la letra de esa canción.",
+    "title": "Letra de: {{title}}",
+    "searching": "Buscando letra...",
+    "footer": "Página {{current}} de {{total}}"
   },
   "queue": {
-  "empty": "{{cross}} La cola está vacía actualmente."
+    "empty": "La cola está vacía actualmente."
+  },
+  "messages": {
+    "idle": "No se ha escuchado nada en los últimos 3 minutos. Es hora de irme.. ¡Nos vemos!",
+    "emptyChannel": "Todos se han ido del canal de voz. Empieza a hacer frío aquí.. ¡Me largo!",
+    "kicked": "¡Alguien me ha echado del chat de voz! No me lo esperaba.."
+  },
+  "filters": {
+    "applied": "¡Filtro de audio **{{filter}}** aplicado correctamente!",
+    "disabled": "Se han desactivado todos los filtros de audio."
+  },
+  "errors": {
+    "invalidPosition": "Posición inválida.",
+    "invalidPositions": "Posiciones inválidas.",
+    "invalidTimeFormat": "Formato de tiempo inválido. Usa `MM:SS` o `HH:MM:SS`.",
+    "timeExceedsDuration": "El tiempo excede la duración de la canción.",
+    "failedBuildLayout": "`❌` No se pudo construir el layout.",
+    "noActivePlayer": "`❌` No hay un reproductor activo.",
+    "filterApplyFailed": "`❌` No se pudo aplicar el filtro.",
+    "notEnoughTracksToShuffle": "`❌` No hay suficientes canciones en cola para mezclar."
+  },
+  "actions": {
+    "removed": "Se eliminó **{{title}}** de la cola.",
+    "moved": "Se movió la canción de **#{{from}}** a **#{{to}}**.",
+    "seeked": "Se saltó a **{{time}}**.",
+    "volumeSet": "Volumen ajustado a **{{value}}%**."
   }
-  }
+}

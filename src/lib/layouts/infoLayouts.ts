@@ -1,5 +1,5 @@
 import { Emojis } from '../constants/emojis';
-import { ContainerComponent, TextDisplayComponent, SectionComponent, SeparatorComponent, ActionRowComponent, ButtonComponent } from './ui';
+import { ContainerComponent, TextDisplayComponent, SectionComponent, SeparatorComponent, ActionRowComponent, ButtonComponent, ThumbnailComponent } from './ui';
 
 export interface UserInfoLabels {
     joinedDiscord: string;
@@ -7,6 +7,8 @@ export interface UserInfoLabels {
     highestRole: string;
     viewHistoryBtn: string;
     addNoteBtn: string;
+    badges: string;
+    clan: string;
 }
 
 export function getUserInfoLayout(
@@ -18,20 +20,22 @@ export function getUserInfoLayout(
     highestRoleIdStr: string, // Formatted ping <@&id> or string indicator
     accentColor: number,
     invokerId: string,
-    labels: UserInfoLabels
+    labels: UserInfoLabels,
+    badgesStr: string = '',
+    clanTag: string = ''
 ) {
+    const clanLine   = clanTag.length > 0   ? `\n\n**${labels.clan}**: \`${clanTag}\`` : '';
+    const badgesLine = badgesStr.length > 0 ? `\n\n**${labels.badges}**\n${badgesStr}` : '';
+
     return {
         flags: 32768, // Components V2 flag
         components: [
             ContainerComponent([
                 SectionComponent(
                     [
-                        TextDisplayComponent(`### <@${targetId}> (${targetUsername})\n\n**ID**: \`${targetId}\`\n\n**${labels.highestRole}**\n${highestRoleIdStr}\n\n**${labels.joinedDiscord}**:\n${joinedDiscordStr}\n\n**${labels.joinedServer}**:\n${joinedServerStr}`)
+                        TextDisplayComponent(`### <@${targetId}> (${targetUsername})\n\n**ID**: \`${targetId}\`${clanLine}\n\n**${labels.highestRole}**\n${highestRoleIdStr}\n\n**${labels.joinedDiscord}**:\n${joinedDiscordStr}\n\n**${labels.joinedServer}**:\n${joinedServerStr}${badgesLine}`)
                     ],
-                    {
-                        type: 11,
-                        media: { url: avatarUrl }
-                    }
+                    ThumbnailComponent(avatarUrl)
                 ),
                 SeparatorComponent(1, true),
                 ActionRowComponent([
@@ -62,7 +66,9 @@ export function getHistoryLayout(
         flags: 32768, // Components V2 flag
         components: [
             ContainerComponent([
-                TextDisplayComponent(`${Emojis.static_setting_emoji} **${title}**`),
+                SectionComponent([
+                    TextDisplayComponent(`${Emojis.static_setting_emoji} **${title}**`)
+                ]),
                 SeparatorComponent(1, true),
                 TextDisplayComponent(historyText)
             ])

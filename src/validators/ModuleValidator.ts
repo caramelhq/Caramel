@@ -1,3 +1,5 @@
+import { getLogsGuildConfig, isLogsConfigReady } from '../lib/logging/configStore';
+
 // Types ──────────────────
 
 export interface ValidationResult {
@@ -58,6 +60,20 @@ export const ModuleValidators: Record<string, (config: any, guild: any) => Promi
     automod: async (config, _guild) => {
         // AutoMod doesn't have strict requirements initially other than basic existence
         if (!config) return { isValid: false, missing: ['Server configuration not found. Run /module setup first.'] };
+        return { isValid: true };
+    },
+
+    // Logs validator ──────────
+
+    logs: async (_config, guild) => {
+        const logsConfig = await getLogsGuildConfig(guild.id);
+        if (!isLogsConfigReady(logsConfig)) {
+            return {
+                isValid: false,
+                missing: ['Logs routing is not configured yet. Run /module setup logs first.']
+            };
+        }
+
         return { isValid: true };
     }
 };

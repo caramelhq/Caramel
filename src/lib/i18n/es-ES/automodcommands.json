@@ -1,0 +1,116 @@
+{
+  "command": {
+    "description": "Gestiona el sistema nativo de AutoMod de Discord",
+    "group": {
+      "name": "rule",
+      "description": "Gestión de reglas de AutoMod"
+    },
+    "subcommands": {
+      "add": "Crea una nueva regla nativa de AutoMod en Discord",
+      "delete": "Elimina una regla existente de Discord",
+      "list": "Muestra todas las reglas activas del servidor",
+      "import": "Importa un preset de reglas en Discord"
+    },
+    "options": {
+      "level": "Nivel de severidad",
+      "language": "Idioma del preset",
+      "topic": "Tema del preset"
+    },
+    "choices": {
+      "low": "Bajo",
+      "medium": "Medio",
+      "high": "Alto",
+      "english": "Inglés",
+      "spanish": "Español"
+    }
+  },
+  "list": {
+    "empty": "`🔍` No se encontraron reglas nativas de AutoMod.",
+    "title": "Reglas Nativas de AutoMod",
+    "description": "El servidor **{{guild}}** tiene **{{count}}** filtros activos."
+  },
+  "import": {
+    "presetNotFound": "`❌` Preset no encontrado.",
+    "cancelled": "`❌` Importación cancelada.",
+    "selectionUpdated": "{{check}} Selección actualizada!",
+    "togglePrompt": "Activa o desactiva las reglas que quieres incluir en esta importación:",
+    "noActiveRules": "⚠️ No hay reglas activas para configurar. Habilita algunas reglas primero.",
+    "inspectorPrompt": "**Inspector de Reglas**\nSelecciona una regla para ver y editar sus detalles:",
+    "returning": "Volviendo...",
+    "triggerUpdated": "Trigger actualizado!",
+    "limitUpdated": "Límite actualizado!",
+    "actionsUpdated": "Acciones actualizadas!",
+    "nativePresetLocked": "⚠️ Los presets nativos (como palabras malsonantes) usan listas gestionadas por Discord y no se pueden personalizar con texto propio.",
+    "triggerNotEditable": "⚠️ Este tipo de trigger no se puede editar manualmente aquí.",
+    "configureActions": "Elige la penalización para esta regla:",
+    "importCompleted": "{{check}} **Importación Completada**\nCreadas: {{created}}\nActualizadas: {{updated}}\nOmitidas: {{skipped}}\n\n{{entries}}",
+    "error": "❌ Error: {{message}}",
+    "buttons": {
+      "cancel": "Cancelar",
+      "configure": "Configurar",
+      "import": "Importar",
+      "editTrigger": "Editar Trigger",
+      "editActions": "Editar Acciones",
+      "back": "Volver"
+    },
+    "select": {
+      "rulePlaceholder": "Selecciona reglas para importar",
+      "configPlaceholder": "Selecciona una regla para configurar",
+      "actionPlaceholder": "Elige acciones...",
+      "blockOnly": "Solo bloquear mensaje",
+      "blockOnlyDescription": "Solo evita que el mensaje se envíe.",
+      "blockTimeout": "Bloquear + Timeout (60s)",
+      "blockTimeoutDescription": "Bloquea el mensaje y silencia al usuario 1 minuto.",
+      "typeDescription": "Tipo: {{type}}"
+    },
+    "status": {
+      "disabled": "Deshabilitada",
+      "updateExisting": "Actualizar existente",
+      "createNew": "Crear nueva",
+      "limitExceeded": "Límite excedido: {{count}}/6"
+    },
+    "inspector": {
+      "title": "### 🔧 Regla: {{name}}",
+      "type": "**Tipo:** {{type}}",
+      "actions": "**Acciones:** {{actions}}",
+      "keywords": "**Keywords ({{count}}):** `{{value}}`",
+      "regex": "**Regex:** `{{value}}`",
+      "mentionLimit": "**Límite de menciones:** `{{value}}`",
+      "nativePresets": "**Presets nativos:** `{{value}}`",
+      "editKeywordsTitle": "Editar keywords: {{name}}",
+      "editRegexLabel": "Patrones regex",
+      "editKeywordsLabel": "Keywords (separadas por coma)",
+      "editMentionTitle": "Editar límite de menciones",
+      "editMentionLabel": "Límite de menciones únicas"
+    }
+  },
+  "meta": {
+    "trigger": {
+      "keyword": "KEYWORD",
+      "spam": "SPAM_CHECK",
+      "mlSpam": "ML_SPAM",
+      "keywordPreset": "KEYWORD_PRESET",
+      "mentionSpam": "MENTION_SPAM",
+      "unknown": "UNKNOWN"
+    },
+    "action": {
+      "block": "BLOCK",
+      "alert": "ALERT",
+      "timeout": "TIMEOUT",
+      "unknown": "UNKNOWN"
+    },
+    "preset": {
+      "profanity": "Lenguaje ofensivo",
+      "sexualContent": "Contenido sexual",
+      "slurs": "Insultos",
+      "fallback": "Preset {{value}}"
+    }
+  },
+  "autocomplete": {
+    "needsDependencies": "⚠️ Selecciona idioma y nivel primero"
+  },
+  "notImplemented": {
+    "add": "Funcionalidad no modificada en esta pasada.",
+    "delete": "Funcionalidad no modificada en esta pasada."
+  }
+}

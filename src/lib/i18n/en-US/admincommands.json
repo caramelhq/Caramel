@@ -1,0 +1,61 @@
+{
+  "command": {
+    "description": "Admin diagnostics and utilities",
+    "subcommands": {
+      "health": "Show runtime health and diagnostics"
+    },
+    "botCommander": {
+      "description": "Designate roles or members as Bot Commanders",
+      "subcommands": {
+        "allow": "Grant Bot Commander status to a role or member",
+        "remove": "Remove Bot Commander status from a role or member"
+      },
+      "options": {
+        "role": "Role to target",
+        "member": "Member to target"
+      }
+    }
+  },
+  "botCommander": {
+    "allow": {
+      "success": "{{name}} is now a Bot Commander."
+    },
+    "remove": {
+      "success": "Removed Bot Commander from {{name}}.",
+      "notFound": "{{name}} is not a Bot Commander."
+    },
+    "errors": {
+      "noTarget": "You must specify either a role or a member.",
+      "bothTargets": "Specify either a role or a member, not both."
+    }
+  },
+  "health": {
+    "title": "Admin Health",
+    "values": {
+      "notAvailable": "n/a"
+    },
+    "labels": {
+      "uptime": "Uptime",
+      "readySince": "Ready Since",
+      "wsPing": "Gateway Ping",
+      "shards": "Shards",
+      "db": "Database",
+      "redis": "Redis",
+      "guilds": "Guilds",
+      "usersCached": "Cached Users",
+      "channelsCached": "Cached Channels",
+      "musicNodes": "Music Nodes",
+      "musicPlayers": "Music Players",
+      "musicQueues": "Music Queues",
+      "memoryHeap": "Memory Heap",
+      "memoryRss": "Memory RSS",
+      "nodeVersion": "Node Version",
+      "pid": "Process ID"
+    },
+    "status": {
+      "ok": "OK",
+      "degraded": "DEGRADED",
+      "down": "DOWN"
+    }
+  }
+}

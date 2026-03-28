@@ -4,7 +4,7 @@ import { container, Command } from '@sapphire/framework';
 import { getSanctionLayout } from '../layouts/modCommandLayouts';
 import { CaramelUserError } from '../structures/Errors';
 
-export type ModAction = 'warn' | 'mute' | 'ban' | 'tempban' | 'softban' | 'kick' | 'timeout' | 'unmute' | 'unban';
+export type ModAction = 'warn' | 'mute' | 'ban' | 'tempban' | 'softban' | 'kick' | 'timeout' | 'untimeout' | 'unmute' | 'unban';
 
 import { prisma } from '../../database/db';
 import { CacheManager } from '../../database/CacheManager';
@@ -47,6 +47,39 @@ export async function requireMutedRole(guildId: string): Promise<string> {
 
     if (!role) throw new CaramelUserError('errors:mod_mutedRoleNotFound');
     return role.id;
+}
+
+export async function syncMutedRoleOverwrites(guild: Guild, mutedRoleId: string): Promise<{ updated: number; failed: number }> {
+    const denyPermissions = {
+        SendMessages: false,
+        SendMessagesInThreads: false,
+        AddReactions: false,
+        CreatePublicThreads: false,
+        CreatePrivateThreads: false,
+        SendTTSMessages: false
+    } as const;
+
+    const channels = await guild.channels.fetch();
+    let updated = 0;
+    let failed = 0;
+
+    for (const channel of channels.values()) {
+        if (!channel || !('permissionOverwrites' in channel)) continue;
+
+        try {
+            await channel.permissionOverwrites.edit(mutedRoleId, denyPermissions, {
+                reason: 'Caramel - enforce muted role overwrite'
+            });
+            updated++;
+        } catch (error) {
+            failed++;
+            container.logger.warn(
+                `[MOD_UTILS] Failed applying muted overwrite in guild ${guild.id} channel ${channel.id}: ${(error as Error)?.message ?? error}`
+            );
+        }
+    }
+
+    return { updated, failed };
 }
 
 export async function requireThresholds(guildId: string): Promise<void> {
@@ -120,28 +153,31 @@ export async function sendModLog(data: {
     isAutomatic?: boolean
 }): Promise<number | null> {
     try {
-        const config = await prisma.guildConfig.update({
-            where: { guildId: data.guildId },
-            data: { caseCount: { increment: 1 } },
-            select: { caseCount: true }
-        });
-
-        const caseNumber = config.caseCount;
         const now = new Date();
 
-        await prisma.modLog.create({
-            data: {
-                guildId:     data.guildId,
-                userId:      data.userId,
-                moderatorId: data.moderatorId,
-                action:      data.action,
-                reason:      data.reason ?? null,
-                duration:    data.duration ?? null,
-                expiresAt:   data.expiresAt ?? null,
-                caseNumber:  caseNumber,
-                isAutomatic: data.isAutomatic ?? false,
-                createdAt:   now
-            }
+        const caseNumber = await prisma.$transaction(async (tx) => {
+            const config = await tx.guildConfig.update({
+                where: { guildId: data.guildId },
+                data: { caseCount: { increment: 1 } },
+                select: { caseCount: true }
+            });
+
+            await tx.modLog.create({
+                data: {
+                    guildId:     data.guildId,
+                    userId:      data.userId,
+                    moderatorId: data.moderatorId,
+                    action:      data.action,
+                    reason:      data.reason ?? null,
+                    duration:    data.duration ?? null,
+                    expiresAt:   data.expiresAt ?? null,
+                    caseNumber:  config.caseCount,
+                    isAutomatic: data.isAutomatic ?? false,
+                    createdAt:   now
+                }
+            });
+
+            return config.caseCount;
         });
 
         const modConfig = await CacheManager.getModConfig(data.guildId);
@@ -228,8 +264,13 @@ export async function checkThresholds(data: {
                     createdAt: { gte: dateLimit }
                 }
             });
-            activeRule = await prisma.modThreshold.findUnique({
-                where: { guild_trigger_threshold_unique: { guildId: data.guildId, triggerType: 'all', threshold: currentCount } }
+            activeRule = await prisma.modThreshold.findFirst({
+                where: {
+                    guildId: data.guildId,
+                    triggerType: 'all',
+                    threshold: { lte: currentCount }
+                },
+                orderBy: { threshold: 'desc' }
             });
         } else {
             currentCount = await prisma.modLog.count({
@@ -241,8 +282,13 @@ export async function checkThresholds(data: {
                     createdAt: { gte: dateLimit }
                 }
             });
-            activeRule = await prisma.modThreshold.findUnique({
-                where: { guild_trigger_threshold_unique: { guildId: data.guildId, triggerType: data.actionTriggered, threshold: currentCount } }
+            activeRule = await prisma.modThreshold.findFirst({
+                where: {
+                    guildId: data.guildId,
+                    triggerType: data.actionTriggered,
+                    threshold: { lte: currentCount }
+                },
+                orderBy: { threshold: 'desc' }
             });
         }
 
@@ -364,8 +410,9 @@ export function formatSeconds(seconds: number): string {
 }
 
 export function parseDuration(input: string): { ms: number, expiresAt: Date, formatted: string } | null {
-    const regex = /(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?/i;
-    const match = input.match(regex);
+    const normalized = input.trim().toLowerCase();
+    const regex = /^(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?$/;
+    const match = normalized.match(regex);
     if (!match || (!match[1] && !match[2] && !match[3])) return null;
     const days    = parseInt(match[1] ?? '0');
     const hours   = parseInt(match[2] ?? '0');

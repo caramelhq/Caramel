@@ -1,4 +1,19 @@
 {
+  "command": {
+    "history": {
+      "description": "Ver historial de sanciones de un usuario",
+      "options": {
+        "user": "Usuario a consultar (por defecto tú)",
+        "userId": "ID de usuario (por defecto tú)"
+      }
+    },
+    "user": {
+      "description": "Obtén información sobre un usuario",
+      "options": {
+        "target": "El usuario a inspeccionar"
+      }
+    }
+  },
   "history": {
     "usage": "<user|user_id>",
     "specifyUser": "{{cross}} Por favor especifica un usuario o un ID de usuario válido.",
@@ -9,6 +24,7 @@
     "notYourButton": "{{cross}} No puedes interactuar con este botón porque tú no ejecutaste el comando.",
     "labels": {
       "badges": "Insignias",
+      "clan": "Clan",
       "general": "Información General",
       "id": "ID",
       "created": "Creado",
@@ -17,7 +33,12 @@
       "modHistory": "Historial de Moderación",
       "viewHistory": "Ver Historial",
       "addNote": "Añadir Nota",
-      "permissions": "Permisos Clave"
+      "permissions": "Permisos Clave",
+      "joinedDiscord": "Unido a Discord",
+      "joinedServer": "Unido al servidor",
+      "highestRole": "Rol más alto",
+      "notInServer": "No está en el servidor",
+      "none": "Ninguno"
     }
   }
 }

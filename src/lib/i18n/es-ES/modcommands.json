@@ -1,4 +1,149 @@
 {
+  "command": {
+    "ban": {
+      "description": "Banear a un miembro",
+      "options": {
+        "user": "Miembro a banear",
+        "reason": "Razón",
+        "deleteDays": "Días de mensajes a eliminar (0-7)"
+      }
+    },
+    "kick": {
+      "description": "Expulsar a un miembro",
+      "options": {
+        "user": "Miembro a expulsar",
+        "reason": "Razón"
+      }
+    },
+    "mute": {
+      "description": "Silenciar a un miembro",
+      "options": {
+        "user": "Miembro a silenciar",
+        "duration": "Duración (ej. 30m, 2h, 1d, 1d2h30m)",
+        "reason": "Razón"
+      }
+    },
+    "unmute": {
+      "description": "Quitar mute a un miembro",
+      "options": {
+        "user": "Miembro a desilenciar"
+      }
+    },
+    "timeout": {
+      "description": "Aislar a un miembro",
+      "options": {
+        "user": "Miembro a aislar",
+        "duration": "Duración (ej. 10m, 1h) - Máx 28 días",
+        "reason": "Razón"
+      }
+    },
+    "untimeout": {
+      "description": "Quitar aislamiento a un miembro",
+      "options": {
+        "user": "Miembro al que quitar aislamiento"
+      }
+    },
+    "warn": {
+      "description": "Advertir a un miembro",
+      "options": {
+        "user": "Miembro a advertir",
+        "reason": "Razón"
+      }
+    },
+    "softban": {
+      "description": "Soft-banear a un miembro",
+      "options": {
+        "user": "Miembro a softbanear",
+        "reason": "Razón",
+        "deleteDays": "Días de mensajes a eliminar (0-7, por defecto 3)"
+      }
+    },
+    "tempban": {
+      "description": "Banear temporalmente a un miembro",
+      "options": {
+        "user": "Miembro a banear",
+        "duration": "Duración (ej. 1d, 2h, 30m)",
+        "reason": "Razón"
+      }
+    },
+    "unban": {
+      "description": "Desbanear a un usuario",
+      "options": {
+        "userId": "ID del usuario a desbanear",
+        "reason": "Razón"
+      }
+    },
+    "case": {
+      "description": "Ver detalles de un caso de moderación",
+      "options": {
+        "number": "Número de caso"
+      }
+    },
+    "removeCase": {
+      "description": "Eliminar un caso de moderación",
+      "options": {
+        "caseNumber": "Número de caso a eliminar",
+        "reason": "Razón de eliminación"
+      }
+    },
+    "lockdown": {
+      "description": "Bloquear/Desbloquear un canal",
+      "options": {
+        "channel": "Canal a bloquear (opcional)"
+      }
+    },
+    "slowmode": {
+      "description": "Configurar modo lento en un canal",
+      "options": {
+        "duration": "Duración del modo lento (ej. 5s, 1m, 0/off)",
+        "channel": "Canal para aplicar modo lento (opcional)"
+      }
+    },
+    "silentban": {
+      "description": "Gestionar baneos silenciosos",
+      "subcommands": {
+        "add": "Aplicar un baneo silencioso a un usuario",
+        "remove": "Eliminar un baneo silencioso",
+        "list": "Listar baneos silenciosos activos"
+      },
+      "options": {
+        "user": "Usuario a banear silenciosamente",
+        "duration": "Duración del baneo",
+        "reason": "Razón del baneo silencioso",
+        "removeUser": "Usuario a desbanear"
+      }
+    },
+    "threshold": {
+      "description": "Gestionar umbrales de moderación",
+      "subcommands": {
+        "add": "Agregar o actualizar una regla de umbral",
+        "list": "Listar reglas de umbral",
+        "remove": "Eliminar una regla de umbral"
+      },
+      "options": {
+        "trigger": "Contador de acciones que dispara la regla",
+        "count": "Conteo de disparo",
+        "action": "Acción a aplicar",
+        "duration": "Duración para mute/timeout/tempban (ej. 30m, 2h, 1d)",
+        "listTrigger": "Filtro opcional por trigger",
+        "id": "ID de la regla"
+      }
+    },
+    "perms": {
+      "description": "Gestionar permisos de moderación de Caramel",
+      "subcommands": {
+        "allow": "Conceder permiso a un rol o miembro para usar una acción de moderación",
+        "deny": "Bloquear explícitamente a un rol o miembro del uso de una acción de moderación",
+        "delete": "Eliminar un permiso configurado",
+        "list": "Ver todos los permisos configurados para un rol o miembro"
+      },
+      "options": {
+        "role": "Rol objetivo",
+        "member": "Miembro objetivo",
+        "action": "La acción de moderación"
+      }
+    }
+  },
   "sanctions": {
     "types": {
       "ban": "Usuario Baneado",
@@ -8,6 +153,7 @@
       "mute": "Usuario Silenciado",
       "unmute": "Usuario Desilenciado",
       "timeout": "Usuario Aislado",
+      "untimeout": "Aislamiento removido",
       "softban": "Usuario Soft-baneado",
       "warn": "Usuario Advertido",
       "slowmode": "Modo Lento Actualizado",
@@ -23,6 +169,7 @@
       "warn": "{{user}} ha sido **advertido**.",
       "unban": "{{user}} ha sido **desbaneado**.",
       "unmute": "{{user}} ha sido **desilenciado**.",
+      "untimeout": "Se removio el aislamiento de {{user}}.",
       "slowmode": "Modo lento establecido a **{{time}}**.",
       "slowmode_remote": "Modo lento establecido a **{{time}}** en {{channel}}.",
       "slowmode_disabled": "Modo lento **desactivado**.",
@@ -51,6 +198,7 @@
       "warn": "warn <usuario> [razón]",
       "softban": "softban <usuario> [razón]",
       "timeout": "timeout <usuario> <duración> [razón]",
+      "untimeout": "untimeout <usuario>",
       "tempban": "tempban <usuario> <duración> [razón]",
       "unban": "unban <id_usuario> [razón]",
       "slowmode": "slowmode <tiempo> [canal]",
@@ -60,13 +208,16 @@
     "ban": {
       "notBanned": "Este usuario no está baneado.",
       "notBannable": "No puedo banear a este usuario (podría tener un rol superior al mío).",
-      "softbanAuditReason": "Softbaneado (Ban + Unban para borrar mensajes)"
+      "softbanAuditReason": "Softbaneado (Ban + Unban para borrar mensajes)",
+      "invalidUserId": "Por favor proporciona un ID de usuario válido."
     },
     "kick": {
       "notKickable": "No puedo expulsar a este usuario."
     },
     "mute": {
       "notMuted": "Este usuario no está silenciado.",
+      "alreadyMuted": "Este usuario ya tiene un mute activo.",
+      "hasTimeoutProceedWithForce": "Este usuario ya tiene un timeout activo. Remueve el aislamiento antes de aplicar un mute.",
       "auditReason": "Silenciamiento removido por comando",
       "permanent": "Permanente"
     },
@@ -74,14 +225,21 @@
       "roleMissing": "El rol de silenciado no está configurado."
     },
     "timeout": {
-      "tooLong": "El tiempo de aislamiento no puede exceder los 28 días."
+      "tooLong": "El tiempo de aislamiento no puede exceder los 28 días.",
+      "alreadyTimedOut": "Este usuario ya tiene un timeout activo.",
+      "notTimedOut": "Este usuario no tiene un timeout activo.",
+      "auditReason": "Timeout removido por comando",
+      "hasMuteProceedWithForce": "Este usuario ya tiene un mute activo. Remueve el mute antes de aplicar un aislamiento."
     },
     "case": {
       "notFound": "Caso #{{case}} no encontrado.",
       "invalidNumber": "Por favor proporciona un número de caso válido.",
       "removed": "El caso #{{case}} ha sido eliminado.",
       "title": "Caso #{{case}}",
-      "noReason": "Sin razón"
+      "noReason": "Sin razón",
+      "fields": {
+        "action": "Acción"
+      }
     },
     "silentban": {
       "self": "No puedes aplicarte un baneo silencioso a ti mismo.",
@@ -91,9 +249,49 @@
     },
     "threshold": {
       "errors": {
-        "thresholdsDisabled": "Los umbrales automáticos están desactivados en este servidor."
+        "thresholdsDisabled": "Los umbrales automáticos están desactivados en este servidor.",
+        "subcommandRequired": "Debes indicar un subcomando: add, list o remove.",
+        "unknownSubcommand": "Subcomando desconocido: {{subcommand}}.",
+        "invalidTrigger": "Tipo de trigger inválido: {{trigger}}.",
+        "invalidAction": "Tipo de acción inválido: {{action}}.",
+        "invalidCount": "El conteo del umbral debe ser al menos 1.",
+        "invalidId": "Por favor proporciona un ID de regla de umbral válido.",
+        "durationRequired": "La acción {{action}} requiere una duración.",
+        "durationNotAllowed": "La acción {{action}} no permite duración.",
+        "notFound": "La regla de umbral #{{id}} no existe en este servidor."
       },
-      "autoReason": "Acción automática ({{count}} sanciones)"
+      "autoReason": "Acción automática ({{count}} sanciones)",
+      "added": "Umbral #{{id}} guardado: trigger={{trigger}}, conteo={{count}}, acción={{action}}, duración={{duration}}.",
+      "removed": "La regla de umbral #{{id}} ha sido eliminada.",
+      "list": {
+        "title": "Reglas de Umbral",
+        "empty": "No se encontraron reglas de umbral.",
+        "expirationEnabled": "Ventana de expiración de warns: {{days}} día(s)",
+        "expirationDisabled": "Ventana de expiración de warns: desactivada",
+        "line": "#{{id}} | {{trigger}} x{{count}} -> {{action}} | duración: {{duration}}"
+      }
+    }
+  },
+  "perms": {
+    "allow": {
+      "success": "{{name}} ahora puede usar `{{action}}`."
+    },
+    "deny": {
+      "success": "{{name}} tiene denegado explícitamente el uso de `{{action}}`."
+    },
+    "delete": {
+      "success": "Se eliminó el permiso de {{name}} para `{{action}}`.",
+      "notFound": "No se encontró ningún permiso para {{name}} en `{{action}}`."
+    },
+    "list": {
+      "empty": "No hay permisos configurados para {{name}}.",
+      "title": "Permisos de {{name}}:"
+    },
+    "errors": {
+      "noTarget": "Debes especificar un rol o un miembro.",
+      "bothTargets": "Especifica solo un rol o un miembro, no ambos.",
+      "denied": "Tienes denegado explícitamente el uso de este comando.",
+      "noPermission": "No tienes permiso para usar este comando."
     }
   }
 }

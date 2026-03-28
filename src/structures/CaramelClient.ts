@@ -1,6 +1,6 @@
 import { InternationalizationContext } from '@sapphire/plugin-i18next';
 import { SapphireClient, container, LogLevel } from '@sapphire/framework';
-import { ActivityType, GatewayIntentBits } from 'discord.js';
+import { ActivityType, GatewayIntentBits, Message } from 'discord.js';
 import pino from 'pino';
 import { join } from 'path';
 import { CacheManager } from '../database/CacheManager';
@@ -58,7 +58,7 @@ export class CaramelClient extends SapphireClient {
                 ]
             },
             defaultPrefix: process.env.PREFIX ?? 'c!',
-            fetchPrefix: async (message) => {
+            fetchPrefix: async (message: Message) => {
                 if (!message.guild) return process.env.PREFIX ?? 'c!';
                 return await CacheManager.getPrefix(message.guild.id);
             },

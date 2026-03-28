@@ -1,7 +1,9 @@
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
-import { ButtonInteraction } from 'discord.js';
+import { ButtonInteraction, GuildMember } from 'discord.js';
 import { prisma } from '../database/db';
 import { getSanctionLayout } from '../lib/layouts/modCommandLayouts';
+import { ContainerComponent, TextDisplayComponent } from '../lib/layouts/ui';
+import { requireModPermission } from '../command-helpers/mod/shared/permissionGuard';
 import { resolveKey } from '@sapphire/plugin-i18next';
 
 export class ModCaseHandler extends InteractionHandler {
@@ -18,8 +20,15 @@ export class ModCaseHandler extends InteractionHandler {
     }
 
     public async run(interaction: ButtonInteraction, caseId: string) {
+        await requireModPermission(interaction.member as GuildMember, 'case');
+
         const caseNumber = parseInt(caseId);
-        
+
+        if (Number.isNaN(caseNumber) || caseNumber <= 0) {
+            const invalidCase = await resolveKey(interaction, 'modcommands:mod.case.invalidNumber').catch(() => 'Invalid case number.');
+            return interaction.reply({ flags: ['Ephemeral', 'IsComponentsV2'], components: [ContainerComponent([TextDisplayComponent(invalidCase)])] });
+        }
+
         const modLog = await prisma.modLog.findFirst({
             where: {
                 guildId: interaction.guildId!,
@@ -28,7 +37,8 @@ export class ModCaseHandler extends InteractionHandler {
         });
 
         if (!modLog) {
-            return interaction.reply({ content: 'Case not found.', ephemeral: true });
+            const notFound = await resolveKey(interaction, 'modcommands:mod.case.notFound', { case: caseNumber }).catch(() => 'Case not found.');
+            return interaction.reply({ flags: ['Ephemeral', 'IsComponentsV2'], components: [ContainerComponent([TextDisplayComponent(notFound)])] });
         }
 
         const ns = 'modcommands:sanctions';
@@ -59,7 +69,7 @@ export class ModCaseHandler extends InteractionHandler {
                 caseId: caseNumber,
                 createdAt: modLog.createdAt
             }),
-            ephemeral: true
+            flags: ['Ephemeral', 'IsComponentsV2']
         });
     }
 }

@@ -1,0 +1,116 @@
+{
+  "command": {
+    "description": "Manage Discord Native AutoMod system",
+    "group": {
+      "name": "rule",
+      "description": "AutoMod rule management"
+    },
+    "subcommands": {
+      "add": "Create a new Discord Native AutoMod rule",
+      "delete": "Remove an existing Discord rule",
+      "list": "Show all active server rules",
+      "import": "Import a rule preset into Discord"
+    },
+    "options": {
+      "level": "Strictness level",
+      "language": "Preset language",
+      "topic": "Preset topic"
+    },
+    "choices": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "english": "English",
+      "spanish": "Spanish"
+    }
+  },
+  "list": {
+    "empty": "`🔍` No Native AutoMod rules found.",
+    "title": "Native AutoMod Rules",
+    "description": "Server **{{guild}}** has **{{count}}** active filters."
+  },
+  "import": {
+    "presetNotFound": "`❌` Preset not found.",
+    "cancelled": "`❌` Import cancelled.",
+    "selectionUpdated": "{{check}} Selection updated!",
+    "togglePrompt": "Toggle the rules you want to include in this import:",
+    "noActiveRules": "⚠️ No active rules to configure. Enable some rules first.",
+    "inspectorPrompt": "**Rule Inspector**\nSelect a rule to view and edit its details:",
+    "returning": "Returning...",
+    "triggerUpdated": "Trigger updated!",
+    "limitUpdated": "Limit updated!",
+    "actionsUpdated": "Actions updated!",
+    "nativePresetLocked": "⚠️ Native presets (like Bad Words) use Discord-managed lists and cannot be customized with custom text.",
+    "triggerNotEditable": "⚠️ This trigger type cannot be manually edited here.",
+    "configureActions": "Choose the penalty for this rule:",
+    "importCompleted": "{{check}} **Import Completed**\nCreated: {{created}}\nUpdated: {{updated}}\nSkipped: {{skipped}}\n\n{{entries}}",
+    "error": "❌ Error: {{message}}",
+    "buttons": {
+      "cancel": "Cancel",
+      "configure": "Configure",
+      "import": "Import",
+      "editTrigger": "Edit Trigger",
+      "editActions": "Edit Actions",
+      "back": "Back"
+    },
+    "select": {
+      "rulePlaceholder": "Select rules to import",
+      "configPlaceholder": "Select a rule to configure",
+      "actionPlaceholder": "Choose actions...",
+      "blockOnly": "Block Message Only",
+      "blockOnlyDescription": "Just prevents the message from being sent.",
+      "blockTimeout": "Block + Timeout (60s)",
+      "blockTimeoutDescription": "Blocks message and mutes user for 1 min.",
+      "typeDescription": "Type: {{type}}"
+    },
+    "status": {
+      "disabled": "Disabled",
+      "updateExisting": "Update existing",
+      "createNew": "Create new",
+      "limitExceeded": "Limit exceeded: {{count}}/6"
+    },
+    "inspector": {
+      "title": "### 🔧 Rule: {{name}}",
+      "type": "**Type:** {{type}}",
+      "actions": "**Actions:** {{actions}}",
+      "keywords": "**Keywords ({{count}}):** `{{value}}`",
+      "regex": "**Regex:** `{{value}}`",
+      "mentionLimit": "**Mention Limit:** `{{value}}`",
+      "nativePresets": "**Native Presets:** `{{value}}`",
+      "editKeywordsTitle": "Edit Keywords: {{name}}",
+      "editRegexLabel": "Regex Patterns",
+      "editKeywordsLabel": "Keywords (comma separated)",
+      "editMentionTitle": "Edit Mention Limit",
+      "editMentionLabel": "Unique Mention Limit"
+    }
+  },
+  "meta": {
+    "trigger": {
+      "keyword": "KEYWORD",
+      "spam": "SPAM_CHECK",
+      "mlSpam": "ML_SPAM",
+      "keywordPreset": "KEYWORD_PRESET",
+      "mentionSpam": "MENTION_SPAM",
+      "unknown": "UNKNOWN"
+    },
+    "action": {
+      "block": "BLOCK",
+      "alert": "ALERT",
+      "timeout": "TIMEOUT",
+      "unknown": "UNKNOWN"
+    },
+    "preset": {
+      "profanity": "Profanity",
+      "sexualContent": "Sexual Content",
+      "slurs": "Slurs",
+      "fallback": "Preset {{value}}"
+    }
+  },
+  "autocomplete": {
+    "needsDependencies": "⚠️ Select Language and Level first"
+  },
+  "notImplemented": {
+    "add": "Feature not modified in this pass.",
+    "delete": "Feature not modified in this pass."
+  }
+}

@@ -1,19 +1,92 @@
 {
+  "command": {
+    "autoplay": {
+      "description": "Toggle autoplay mode to automatically play recommended tracks"
+    },
+    "filter": {
+      "description": "Apply audio filters to the music player",
+      "options": {
+        "type": "The filter to apply"
+      }
+    },
+    "loop": {
+      "description": "Toggle loop mode for the current track"
+    },
+    "lyrics": {
+      "description": "Search lyrics for the current song or query",
+      "options": {
+        "query": "The song to search for (Artist - Title)"
+      }
+    },
+    "move": {
+      "description": "Move a track to a different position in the queue",
+      "options": {
+        "from": "The current position of the track",
+        "to": "The new position for the track"
+      }
+    },
+    "nowPlaying": {
+      "description": "Show the currently playing track"
+    },
+    "pause": {
+      "description": "Pause or resume playback"
+    },
+    "play": {
+      "description": "Play a track or playlist",
+      "options": {
+        "query": "Track name or URL"
+      }
+    },
+    "queue": {
+      "description": "Show the current queue"
+    },
+    "remove": {
+      "description": "Remove a track from the queue",
+      "options": {
+        "position": "The position of the track in the queue"
+      }
+    },
+    "seek": {
+      "description": "Jump to a specific time in the current track",
+      "options": {
+        "time": "Timestamp to jump to (e.g., 1:30, 01:20:00)"
+      }
+    },
+    "shuffle": {
+      "description": "Shuffle the current queue"
+    },
+    "skip": {
+      "description": "Skip the current track"
+    },
+    "stop": {
+      "description": "Stop playback and clear the queue"
+    },
+    "volume": {
+      "description": "Adjust the player volume",
+      "options": {
+        "value": "Volume level (0-200)"
+      }
+    }
+  },
   "play": {
-    "noChannel": "{{cross}} You must be in a voice channel to use this command.",
-    "wrongChannel": "{{cross}} You must be in the same voice channel as the bot.",
-    "noResults": "{{cross}} No results found for that search.",
+    "noChannel": "You must be in a voice channel to use this command.",
+    "wrongChannel": "You must be in the same voice channel as the bot.",
+    "noResults": "No results found for that search.",
     "loaded": "Added to queue: **{{title}}**",
-    "playlistLoaded": "Loaded **{{count}}** tracks from playlist **{{name}}**."
+    "playlistLoaded": "Loaded **{{count}}** tracks from playlist **{{name}}**.",
+    "spotifyFallbackName": "Spotify Fallback (YouTube)",
+    "onlyRequester": "Only the person who requested this song can favorite it!"
   },
   "controls": {
-    "noTrack": "{{cross}} There is no track playing right now.",
+    "noTrack": "There is no track playing right now.",
     "skip": "Track skipped.",
     "stop": "Playback stopped.",
     "loopEnabled": "Loop enabled.",
     "loopDisabled": "Loop disabled.",
     "paused": "Music paused.",
     "resumed": "Music resumed.",
+    "autoplayEnabled": "Autoplay enabled. Caramel will find similar tracks for you! ✨",
+    "autoplayDisabled": "Autoplay disabled. 🔇",
     "shuffle": "The queue has been shuffled!",
     "favoriteAdded": "Added to favorites!",
     "favoriteRemoved": "Removed from favorites.",
@@ -23,6 +96,7 @@
     "nowPlaying": "Now Playing",
     "requestedBy": "Requested by",
     "author": "Author",
+    "album": "Album",
     "track": "Track",
     "queue": "Music Queue",
     "status": "Status",
@@ -31,16 +105,44 @@
     "skip": "Skip",
     "stop": "Stop",
     "loop": "Loop",
-    "in": "In"
-    },
-
+    "autoplay": "Autoplay",
+    "in": "In",
+    "search": "Search Results",
+    "searchPlaceholder": "Select a track to play..."
+  },
   "lyrics": {
-  "noResults": "{{cross}} Lyrics not found for that song.",
-  "title": "Lyrics for: {{title}}",
-  "searching": "{{emoji}} Searching for lyrics...",
-  "footer": "Page {{current}} de {{total}}"
+    "noResults": "Lyrics not found for that song.",
+    "title": "Lyrics for: {{title}}",
+    "searching": "Searching for lyrics...",
+    "footer": "Page {{current}} of {{total}}"
   },
   "queue": {
-  "empty": "{{cross}} The queue is currently empty."
+    "empty": "The queue is currently empty."
+  },
+  "messages": {
+    "idle": "Nothing played in the last 3 minutes. It's time for me to go.. See ya!",
+    "emptyChannel": "All users left the voice channel. It's getting cold in here.. I'm out!",
+    "kicked": "Someone kicked me out the voice chat! I didn't see that coming.."
+  },
+  "filters": {
+    "applied": "Audio filter **{{filter}}** applied successfully!",
+    "disabled": "All audio filters have been disabled."
+  },
+  "errors": {
+    "invalidPosition": "Invalid position.",
+    "invalidPositions": "Invalid positions.",
+    "invalidTimeFormat": "Invalid time format. Use `MM:SS` or `HH:MM:SS`.",
+    "timeExceedsDuration": "Time exceeds track duration.",
+    "failedBuildLayout": "`❌` Failed to build layout.",
+    "noActivePlayer": "`❌` No active player found.",
+    "filterApplyFailed": "`❌` Failed to apply filter.",
+    "notEnoughTracksToShuffle": "`❌` Not enough tracks in queue to shuffle."
+  },
+  "actions": {
+    "removed": "Removed **{{title}}** from the queue.",
+    "moved": "Moved track from **#{{from}}** to **#{{to}}**.",
+    "seeked": "Seeked to **{{time}}**.",
+    "volumeSet": "Volume set to **{{value}}%**."
   }
-  }
+}
+

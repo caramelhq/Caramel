@@ -80,23 +80,26 @@ export async function addSilentBan(
 ): Promise<SilentBan> {
     const expiresAt = durationMs ? new Date(Date.now() + durationMs) : null;
 
-    // Increment caseCount in GuildConfig
-    const config = await prisma.guildConfig.update({
-        where: { guildId },
-        data: { caseCount: { increment: 1 } },
-        select: { caseCount: true }
-    });
+    const ban = await prisma.$transaction(async (tx) => {
+        const config = await tx.guildConfig.update({
+            where: { guildId },
+            data: { caseCount: { increment: 1 } },
+            select: { caseCount: true }
+        });
 
-    const caseNumber = config.caseCount;
-
-    const ban = await prisma.silentBan.upsert({
-        where:  { guild_user_unique: { guildId, userId } },
-        create: { guildId, userId, moderatorId, reason, expiresAt, caseNumber },
-        update: { moderatorId, reason, expiresAt, caseNumber },
+        return tx.silentBan.upsert({
+            where:  { guild_user_unique: { guildId, userId } },
+            create: { guildId, userId, moderatorId, reason, expiresAt, caseNumber: config.caseCount },
+            update: { moderatorId, reason, expiresAt, caseNumber: config.caseCount },
+        });
     });
 
     const oldJob = await silentBanQueue.getJob(`expire-${guildId}-${userId}`).catch(() => null);
-    if (oldJob) await oldJob.remove().catch(() => {});
+    if (oldJob) {
+        await oldJob.remove().catch((error: any) => {
+            console.warn(`[SILENTBAN] Failed to remove previous expire job for ${userId} in ${guildId}: ${error?.message ?? error}`);
+        });
+    }
 
     if (expiresAt && durationMs) {
         const ttl = Math.max(1, Math.floor(durationMs / 1000));
@@ -122,7 +125,9 @@ export async function addSilentBan(
         'voice_disconnect',
         { guildId, userId },
         { jobId: `vcdis-ban-${guildId}-${userId}`, removeOnComplete: true, removeOnFail: true, attempts: 1 }
-    ).catch(() => {});
+    ).catch((error: any) => {
+        console.warn(`[SILENTBAN] Failed to enqueue voice disconnect job for ${userId} in ${guildId}: ${error?.message ?? error}`);
+    });
 
     return ban;
 }

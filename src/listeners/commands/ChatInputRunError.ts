@@ -5,6 +5,13 @@ import { CaramelUserError } from '../../lib/structures/Errors';
 import { getMessageLayout } from '../../lib/layouts/defaultLayout';
 import { Emojis } from '../../lib/constants/emojis';
 
+const TRANSIENT_MOD_ERROR_KEYS = new Set([
+    'modcommands:mod.mute.alreadyMuted',
+    'modcommands:mod.mute.hasTimeoutProceedWithForce',
+    'modcommands:mod.timeout.alreadyTimedOut',
+    'modcommands:mod.timeout.hasMuteProceedWithForce'
+]);
+
 @ApplyOptions<Listener.Options>({
     event: Events.ChatInputCommandError
 })
@@ -27,7 +34,7 @@ export class ChatInputRunErrorListener extends Listener {
                 content = `${Emojis.cross_emoji} An unexpected validation error occurred: \`${error.identifier}\``;
             }
 
-            return this.respond(interaction, content);
+            return this.respond(interaction, content, TRANSIENT_MOD_ERROR_KEYS.has(error.identifier));
         }
 
         // 2. Unexpected Errors (System/Logic)
@@ -37,11 +44,17 @@ export class ChatInputRunErrorListener extends Listener {
         return this.respond(interaction, unexpectedMsg);
     }
 
-    private async respond(interaction: any, content: string) {
+    private async respond(interaction: any, content: string, forceEphemeralFollowUp: boolean = false) {
         const layout = getMessageLayout(content);
+
+        if (forceEphemeralFollowUp && (interaction.deferred || interaction.replied)) {
+            await interaction.deleteReply().catch(() => null);
+            return interaction.followUp({ ...layout, flags: ['Ephemeral', 'IsComponentsV2'] });
+        }
+
         if (interaction.deferred || interaction.replied) {
             return interaction.editReply({ ...layout });
         }
-        return interaction.reply({ ...layout, ephemeral: true });
+        return interaction.reply({ ...layout, flags: ['Ephemeral', 'IsComponentsV2'] });
     }
 }

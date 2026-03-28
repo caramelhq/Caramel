@@ -23,6 +23,12 @@
     },
     "automod": {
       "rulesCount": "Active Rules"
+    },
+    "logs": {
+      "mode": "Setup Mode",
+      "categories": "Enabled Categories",
+      "categoryChannels": "Category Channels",
+      "eventChannels": "Event Routes"
     }
   }
 }
