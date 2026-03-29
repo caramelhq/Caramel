@@ -41,6 +41,14 @@ model GuildConfig {
     thresholdMode          String   @default("modular") @map("threshold_mode")
     caseCount              Int      @default(0) @map("case_count")
 
+    // Clan Tag module ──────────
+    clanTagModule              Boolean  @default(false) @map("clan_tag_module")
+    clanTagString              String?  @map("clan_tag_string")
+    clanTagRoleId              String?  @map("clan_tag_role_id")
+    clanTagChannelId           String?  @map("clan_tag_channel_id")
+    clanTagChannelCreatedByBot Boolean  @default(false) @map("clan_tag_channel_created_by_bot")
+    clanTagRoleCreatedByBot    Boolean  @default(false) @map("clan_tag_role_created_by_bot")
+
     // AutoMod module ──────────
     automodModule          Boolean  @default(false) @map("automod_module")
 
