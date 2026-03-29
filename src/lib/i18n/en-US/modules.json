@@ -44,7 +44,8 @@
       "clantag": "Clan Tag",
       "mod": "Moderation",
       "automod": "AutoMod",
-      "logs": "Advanced Logs"
+      "logs": "Advanced Logs",
+      "tickets": "Tickets"
     },
     "errors": {
       "validatorNotFound": "`❌` Internal error: validator not found.",
@@ -140,6 +141,22 @@
           "mutedOverwrites": "Muted overwrites synced: **{{updated}}** channels",
           "mutedOverwritesWithFailures": "Muted overwrites synced: **{{updated}}** channels ({{failed}} failed)"
         }
+      },
+      "tickets": {
+        "modal": {
+          "title": "Tickets Setup",
+          "panelChannelLabel": "Panel channel ID (required)",
+          "panelChannelPlaceholder": "Leave blank to auto-create",
+          "categoryLabel": "Category channel ID (optional)",
+          "categoryPlaceholder": "Leave blank to auto-create",
+          "transcriptChannelLabel": "Transcript channel ID (optional)",
+          "transcriptChannelPlaceholder": "Leave blank to auto-create",
+          "logChannelLabel": "Log channel ID (optional)",
+          "logChannelPlaceholder": "Leave blank to auto-create",
+          "supporterRolesLabel": "Supporter role IDs (comma-separated)",
+          "supporterRolesPlaceholder": "e.g. 123456789, 987654321"
+        },
+        "panelDescription": "Click the button below to open a support ticket. Our team will assist you as soon as possible."
       },
       "logs": {
         "messages": {

@@ -16,6 +16,7 @@ export { handleVanitySetup } from './setup/vanitySetup';
 export { handleClanTagSetup } from './setup/clanTagSetup';
 export { handleModSetup } from './setup/modSetup';
 export { handleLogsSetup } from './setup/logsSetup';
+export { handleTicketsSetup } from './setup/ticketsSetup';
 
 export { handleSettings } from './management/settings';
 export { handleEnable } from './management/enable';

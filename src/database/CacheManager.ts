@@ -64,6 +64,29 @@ export class CacheManager {
             pipeline.set(`automod:module:${guildId}`, String(config.automodModule));
 
 
+            // Tickets module ──────────
+
+            if ((config as any).ticketsPanelChannelId) pipeline.set(`tickets:panel_channel:${guildId}`, (config as any).ticketsPanelChannelId);
+            else pipeline.del(`tickets:panel_channel:${guildId}`);
+
+            if ((config as any).ticketsCategoryId) pipeline.set(`tickets:category:${guildId}`, (config as any).ticketsCategoryId);
+            else pipeline.del(`tickets:category:${guildId}`);
+
+            if ((config as any).ticketsTranscriptChannelId) pipeline.set(`tickets:transcript_channel:${guildId}`, (config as any).ticketsTranscriptChannelId);
+            else pipeline.del(`tickets:transcript_channel:${guildId}`);
+
+            if ((config as any).ticketsLogChannelId) pipeline.set(`tickets:log_channel:${guildId}`, (config as any).ticketsLogChannelId);
+            else pipeline.del(`tickets:log_channel:${guildId}`);
+
+            if ((config as any).ticketsSupporterRoleIds?.length) pipeline.set(`tickets:supporter_roles:${guildId}`, JSON.stringify((config as any).ticketsSupporterRoleIds));
+            else pipeline.del(`tickets:supporter_roles:${guildId}`);
+
+            if ((config as any).ticketsPanelMessageId) pipeline.set(`tickets:panel_message:${guildId}`, (config as any).ticketsPanelMessageId);
+            else pipeline.del(`tickets:panel_message:${guildId}`);
+
+            pipeline.set(`tickets:module:${guildId}`, String((config as any).ticketsModule));
+
+
             // General ──────────
 
             pipeline.set(`general:locale:${guildId}`, (config as any).locale);

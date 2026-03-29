@@ -91,6 +91,30 @@ export const ModuleValidators: Record<string, (config: any, guild: any) => Promi
         return { isValid: true };
     },
 
+    // Tickets validator ──────────
+
+    tickets: async (config, guild) => {
+        const errors: string[] = [];
+
+        if (!config.ticketsPanelChannelId) {
+            errors.push('The **panel channel** has not been configured.');
+        } else {
+            const panelCh = await guild.channels.fetch(config.ticketsPanelChannelId).catch(() => null);
+            if (!panelCh) errors.push('The **panel channel** does not exist or is inaccessible.');
+        }
+
+        if (config.ticketsCategoryId) {
+            const cat = await guild.channels.fetch(config.ticketsCategoryId).catch(() => null);
+            if (!cat) errors.push('The configured **ticket category** does not exist.');
+        }
+
+        if (!config.ticketsSupporterRoleIds || config.ticketsSupporterRoleIds.length === 0) {
+            errors.push('At least one **supporter role** must be configured.');
+        }
+
+        return { isValid: errors.length === 0, missing: errors };
+    },
+
     // Logs validator ──────────
 
     logs: async (_config, guild) => {

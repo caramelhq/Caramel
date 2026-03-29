@@ -162,7 +162,7 @@ export function getModuleLayout(
   labels: any,
   logsConfig: LogsGuildConfig | null = null,
 ) {
-  const moduleConfigKeyMap: Record<string, string> = { automod: 'automodModule', clantag: 'clanTagModule' };
+  const moduleConfigKeyMap: Record<string, string> = { automod: 'automodModule', clantag: 'clanTagModule', tickets: 'ticketsModule' };
   const moduleConfigKey = moduleConfigKeyMap[moduleName] ?? `${moduleName}Module`;
   const isEnabled =
     moduleName === "logs"
@@ -252,6 +252,34 @@ export function getModuleLayout(
       `${Emojis.static_setting_emoji} **${labels.categories}**: \`${logsConfig.enabledCategories.length}\``,
       `${Emojis.static_setting_emoji} **${labels.eventChannels}**: \`${
         Object.keys(logsConfig.eventChannels).length
+      }\``,
+    ].join("\n");
+  }
+
+  if (moduleName === "tickets") {
+    details = [
+      `${bullet((config as any).ticketsPanelChannelId)} **${labels.panelChannel}**: ${
+        (config as any).ticketsPanelChannelId
+          ? `<#${(config as any).ticketsPanelChannelId}>`
+          : `\`${labels.notSet}\``
+      }`,
+      `${bullet((config as any).ticketsCategoryId)} **${labels.category}**: ${
+        (config as any).ticketsCategoryId
+          ? `<#${(config as any).ticketsCategoryId}>`
+          : `\`${labels.notSet}\``
+      }`,
+      `${bullet((config as any).ticketsTranscriptChannelId)} **${labels.transcriptChannel}**: ${
+        (config as any).ticketsTranscriptChannelId
+          ? `<#${(config as any).ticketsTranscriptChannelId}>`
+          : `\`${labels.notSet}\``
+      }`,
+      `${bullet((config as any).ticketsLogChannelId)} **${labels.logChannel}**: ${
+        (config as any).ticketsLogChannelId
+          ? `<#${(config as any).ticketsLogChannelId}>`
+          : `\`${labels.notSet}\``
+      }`,
+      `${bullet((config as any).ticketsSupporterRoleIds?.length)} **${labels.supporterRoles}**: \`${
+        (config as any).ticketsSupporterRoleIds?.length ?? 0
       }\``,
     ].join("\n");
   }

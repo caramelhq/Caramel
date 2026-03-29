@@ -12,6 +12,7 @@ import {
     handleModSetup,
     handleReset,
     handleSettings,
+    handleTicketsSetup,
     handleVanitySetup,
     moduleChoices,
     moduleIds,
@@ -113,6 +114,7 @@ export class ModuleCommand extends Subcommand {
         if (moduleValue === moduleIds.mod) return handleModSetup(interaction);
         if (moduleValue === moduleIds.automod) return handleAutoModSetup(interaction);
         if (moduleValue === moduleIds.logs) return handleLogsSetup(interaction);
+        if (moduleValue === moduleIds.tickets) return handleTicketsSetup(interaction);
 
         throw new CaramelUserError('errors:unexpected');
     }

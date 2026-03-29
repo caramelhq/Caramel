@@ -6,7 +6,8 @@ export const moduleIds = {
     clantag: 'clantag',
     mod: 'mod',
     automod: 'automod',
-    logs: 'logs'
+    logs: 'logs',
+    tickets: 'tickets'
 } as const;
 
 type ModuleId = (typeof moduleIds)[keyof typeof moduleIds];
@@ -43,6 +44,11 @@ export const moduleChoices = [
         name: moduleDisplayNameLocales.en.logs,
         value: moduleIds.logs,
         nameLocalizations: { 'es-ES': moduleDisplayNameLocales.es.logs }
+    },
+    {
+        name: moduleDisplayNameLocales.en.tickets,
+        value: moduleIds.tickets,
+        nameLocalizations: { 'es-ES': moduleDisplayNameLocales.es.tickets }
     }
 ] as const;
 
@@ -75,7 +81,9 @@ export const moduleDefaults = {
     clanTagChannelName: 'clantag-logs',
     modLogChannelName: 'mod-logs',
     mutedRoleName: 'Muted',
-    thresholdMode: 'warns'
+    thresholdMode: 'warns',
+    ticketsTranscriptChannelName: 'ticket-transcripts',
+    ticketsLogChannelName: 'ticket-logs'
 } as const;
 
 export const moduleConfirmInputs = ['yes', 'si'] as const;

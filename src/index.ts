@@ -11,6 +11,7 @@ import { setupClanTagWorker } from './workers/ClanTagWorker';
 import { setupSilentBanWorker } from './workers/SilentBanWorker';
 import { setupMuteWorker } from './workers/MuteWorker';
 import { setupTempBanWorker } from './workers/TempBanWorker';
+import { setupTicketWorker } from './workers/TicketWorker';
 import { MusicManager } from './lib/structures/MusicManager';
 
 
@@ -28,7 +29,8 @@ async function bootstrap() {
         container.clanTagWorker   = setupClanTagWorker();
         container.silentBanWorker = setupSilentBanWorker();
         container.muteWorker      = setupMuteWorker();
-        container.tempBanWorker    = setupTempBanWorker();
+        container.tempBanWorker   = setupTempBanWorker();
+        container.ticketWorker    = setupTicketWorker();
 
         await client.start(process.env.DISCORD_TOKEN!);
     } catch (error) {
@@ -56,7 +58,8 @@ declare module '@sapphire/pieces' {
         clanTagWorker:   ReturnType<typeof setupClanTagWorker>;
         silentBanWorker: ReturnType<typeof setupSilentBanWorker>;
         muteWorker:      ReturnType<typeof setupMuteWorker>;
-        tempBanWorker:    ReturnType<typeof setupTempBanWorker>;
+        tempBanWorker:   ReturnType<typeof setupTempBanWorker>;
+        ticketWorker:    ReturnType<typeof setupTicketWorker>;
         music:           MusicManager;
     }
 }

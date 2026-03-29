@@ -52,6 +52,15 @@ model GuildConfig {
     // AutoMod module ──────────
     automodModule          Boolean  @default(false) @map("automod_module")
 
+    // Tickets module ──────────
+    ticketsModule              Boolean  @default(false) @map("tickets_module")
+    ticketsPanelChannelId      String?  @map("tickets_panel_channel_id")
+    ticketsCategoryId          String?  @map("tickets_category_id")
+    ticketsTranscriptChannelId String?  @map("tickets_transcript_channel_id")
+    ticketsLogChannelId        String?  @map("tickets_log_channel_id")
+    ticketsSupporterRoleIds    String[] @map("tickets_supporter_role_ids")
+    ticketsPanelMessageId      String?  @map("tickets_panel_message_id")
+
     // General ──────────
     locale String @default("en-US") @map("locale")
     prefix String @default("c!") @map("prefix")
@@ -271,6 +280,30 @@ model BotCommander {
     @@unique([guildId, targetId], name: "bot_commander_guild_target_unique")
     @@index([guildId])
     @@map("bot_commanders")
+}
+
+
+// ─────────────────────────────────────────────
+//  Ticket
+// ─────────────────────────────────────────────
+
+model Ticket {
+    id             Int       @id @default(autoincrement())
+    guildId        String    @map("guild_id")
+    channelId      String    @unique @map("channel_id")
+    userId         String    @map("user_id")
+    claimedById    String?   @map("claimed_by_id")
+    status         String    @default("open") @map("status")
+    autoCloseJobId String?   @map("auto_close_job_id")
+    ticketNumber   Int       @map("ticket_number")
+    createdAt      DateTime  @default(now()) @map("created_at")
+    updatedAt      DateTime  @updatedAt @map("updated_at")
+    closedAt       DateTime? @map("closed_at")
+
+    @@unique([guildId, ticketNumber], name: "ticket_guild_number_unique")
+    @@index([guildId, userId])
+    @@index([guildId, status])
+    @@map("tickets")
 }
 
 

@@ -154,6 +154,42 @@ const RESET_MAP: Record<string, ResetHandler> = {
     await prisma.autoModRule.deleteMany({ where: { guildId } });
     await CacheManager.syncGuild(guildId, updated);
   },
+  tickets: async (guildId, client) => {
+    const config = await prisma.guildConfig.findUnique({ where: { guildId } });
+    if (!config) return;
+
+    // Delete the panel message if it still exists
+    if (config.ticketsPanelChannelId && config.ticketsPanelMessageId) {
+      const guild = client.guilds.cache.get(guildId);
+      if (guild) {
+        const panelCh = guild.channels.cache.get(config.ticketsPanelChannelId);
+        if (panelCh?.isTextBased()) {
+          await (panelCh as any).messages?.delete(config.ticketsPanelMessageId).catch(() => {});
+        }
+      }
+    }
+
+    // Close all active tickets without spamming transcripts
+    await prisma.ticket.deleteMany({ where: { guildId } });
+
+    // Clear all tickets Redis runtime keys for this guild
+    const ticketKeys = await container.redis.keys(`tickets:*:${guildId}*`);
+    if (ticketKeys.length > 0) await container.redis.del(...ticketKeys);
+
+    const updated = await prisma.guildConfig.update({
+      where: { guildId },
+      data: {
+        ticketsModule: false,
+        ticketsPanelChannelId: null,
+        ticketsCategoryId: null,
+        ticketsTranscriptChannelId: null,
+        ticketsLogChannelId: null,
+        ticketsSupporterRoleIds: [],
+        ticketsPanelMessageId: null
+      }
+    });
+    await CacheManager.syncGuild(guildId, updated);
+  },
   logs: async (guildId, client) => {
     const config = await getLogsGuildConfig(guildId);
     const guild = client.guilds.cache.get(guildId);
@@ -308,6 +344,24 @@ async function getResetDeletions(
         );
       }
     }
+  }
+
+  if (moduleName === moduleIds.tickets) {
+    if (config.ticketsPanelChannelId) {
+      deletions.push(
+        await resolveKey(
+          interaction,
+          "modules:module.reset.deletions.unlinkChannel",
+          { id: config.ticketsPanelChannelId },
+        ),
+      );
+    }
+    deletions.push(
+      await resolveKey(
+        interaction,
+        "modules:module.reset.deletions.configOnly",
+      ),
+    );
   }
 
   if (deletions.length === 0 || moduleName === moduleIds.logs) {

@@ -54,6 +54,12 @@ export async function handleSettings(interaction: Subcommand.ChatInputCommandInt
         labels.categories = t('layouts:settings.logs.categories');
         labels.categoryChannels = t('layouts:settings.logs.categoryChannels');
         labels.eventChannels = t('layouts:settings.logs.eventChannels');
+    } else if (moduleValue === moduleIds.tickets) {
+        labels.panelChannel = t('layouts:settings.tickets.panelChannel');
+        labels.category = t('layouts:settings.tickets.category');
+        labels.transcriptChannel = t('layouts:settings.tickets.transcriptChannel');
+        labels.logChannel = t('layouts:settings.tickets.logChannel');
+        labels.supporterRoles = t('layouts:settings.tickets.supporterRoles');
     }
 
     container.logger.info(`[MODULE] Showing settings for ${moduleValue}. Labels:`, labels);
