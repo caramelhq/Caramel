@@ -39,6 +39,34 @@ export const ModuleValidators: Record<string, (config: any, guild: any) => Promi
         return { isValid: errors.length === 0, missing: errors };
     },
 
+    // Clan Tag validator ──────────
+    // Matching is done by guild ID — no tag string required to enable.
+
+    clantag: async (config, guild) => {
+        const errors: string[] = [];
+
+        if (!guild.features.includes('CLAN')) {
+            errors.push('This server does not have the **Clan** feature enabled.');
+            return { isValid: false, missing: errors };
+        }
+
+        const role = config.clanTagRoleId
+            ? await guild.roles.fetch(config.clanTagRoleId).catch(() => null)
+            : null;
+        if (!role) {
+            errors.push('The **reward role** has not been configured or is invalid.');
+        }
+
+        const channel = config.clanTagChannelId
+            ? await guild.channels.fetch(config.clanTagChannelId).catch(() => null)
+            : null;
+        if (!channel) {
+            errors.push('The **log channel** has not been configured or is invalid.');
+        }
+
+        return { isValid: errors.length === 0, missing: errors };
+    },
+
     // Mod validator ──────────
 
     mod: async (config, guild) => {

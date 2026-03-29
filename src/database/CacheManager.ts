@@ -29,6 +29,20 @@ export class CacheManager {
             pipeline.set(`vanity:module:${guildId}`, String(config.vanityModule));
 
 
+            // Clan Tag module ──────────
+
+            if (config.clanTagString) pipeline.set(`clantag:string:${guildId}`, config.clanTagString);
+            else pipeline.del(`clantag:string:${guildId}`);
+
+            if (config.clanTagRoleId) pipeline.set(`clantag:role:${guildId}`, config.clanTagRoleId);
+            else pipeline.del(`clantag:role:${guildId}`);
+
+            if (config.clanTagChannelId) pipeline.set(`clantag:channel:${guildId}`, config.clanTagChannelId);
+            else pipeline.del(`clantag:channel:${guildId}`);
+
+            pipeline.set(`clantag:module:${guildId}`, String(config.clanTagModule));
+
+
             // Mod module ──────────
 
             if (config.modLogChannelId) pipeline.set(`mod:log_channel:${guildId}`, config.modLogChannelId);
