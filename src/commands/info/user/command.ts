@@ -50,8 +50,8 @@ export class UserCommand extends Command {
 
         const createdDateStr = `${time(targetUser.createdAt, TimestampStyles.LongDate)} (${time(targetUser.createdAt, TimestampStyles.RelativeTime)})`;
         
-        let joinedDateStr  = labels.notInServer;
-        let highestRoleStr = labels.none;
+        let joinedDateStr  = notInServer;
+        let highestRoleStr = none;
         let accentColor    = 0xF9A825; // Base color fallback (Caramel Yellow)
 
         if (targetMember) {
