@@ -63,6 +63,48 @@ const RESET_MAP: Record<string, ResetHandler> = {
     });
     await CacheManager.syncGuild(guildId, updated);
   },
+  clantag: async (guildId, client) => {
+    const config = await prisma.guildConfig.findUnique({ where: { guildId } });
+    if (!config) return;
+
+    if (config.clanTagChannelId && config.clanTagChannelCreatedByBot) {
+      const channel = await client.channels
+        .fetch(config.clanTagChannelId)
+        .catch(() => null);
+      if (channel?.isTextBased()) {
+        const webhooks = await channel.fetchWebhooks().catch(() => null);
+        const caramelWh = webhooks?.find((wh: any) => wh.name === "Caramel");
+        await caramelWh?.delete("Module reset").catch(() => {});
+      }
+      await channel?.delete("Caramel - Clan Tag module reset").catch(() => {});
+    }
+
+    if (config.clanTagRoleId && config.clanTagRoleCreatedByBot) {
+      const guild = client.guilds.cache.get(guildId);
+      const role = await guild?.roles
+        .fetch(config.clanTagRoleId)
+        .catch(() => null);
+      await role?.delete("Caramel - Clan Tag module reset").catch(() => {});
+    }
+
+    const updated = await prisma.guildConfig.update({
+      where: { guildId },
+      data: {
+        clanTagString: null,
+        clanTagRoleId: null,
+        clanTagChannelId: null,
+        clanTagModule: false,
+        clanTagRoleCreatedByBot: false,
+        clanTagChannelCreatedByBot: false,
+      },
+    });
+
+    // Clear all per-member state keys so the listener re-evaluates on next presence event.
+    const memberKeys = await container.redis.keys(`clantag:member:${guildId}:*`);
+    if (memberKeys.length > 0) await container.redis.del(...memberKeys);
+
+    await CacheManager.syncGuild(guildId, updated);
+  },
   mod: async (guildId, client) => {
     const config = await prisma.guildConfig.findUnique({ where: { guildId } });
     if (!config) return;
@@ -180,6 +222,47 @@ async function getResetDeletions(
             interaction,
             "modules:module.reset.deletions.unlinkRole",
             { id: config.vanityRoleId },
+          ),
+        );
+      }
+    }
+  }
+
+  if (moduleName === moduleIds.clantag) {
+    if (config.clanTagChannelId) {
+      if (config.clanTagChannelCreatedByBot) {
+        deletions.push(
+          await resolveKey(
+            interaction,
+            "modules:module.reset.deletions.deleteChannel",
+            { id: config.clanTagChannelId },
+          ),
+        );
+      } else {
+        deletions.push(
+          await resolveKey(
+            interaction,
+            "modules:module.reset.deletions.unlinkChannel",
+            { id: config.clanTagChannelId },
+          ),
+        );
+      }
+    }
+    if (config.clanTagRoleId) {
+      if (config.clanTagRoleCreatedByBot) {
+        deletions.push(
+          await resolveKey(
+            interaction,
+            "modules:module.reset.deletions.deleteRole",
+            { id: config.clanTagRoleId },
+          ),
+        );
+      } else {
+        deletions.push(
+          await resolveKey(
+            interaction,
+            "modules:module.reset.deletions.unlinkRole",
+            { id: config.clanTagRoleId },
           ),
         );
       }

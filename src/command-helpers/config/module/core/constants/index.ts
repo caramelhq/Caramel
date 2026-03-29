@@ -3,6 +3,7 @@ import modulesEsEs from '../../../../../lib/i18n/es-ES/modules.json';
 
 export const moduleIds = {
     vanity: 'vanity',
+    clantag: 'clantag',
     mod: 'mod',
     automod: 'automod',
     logs: 'logs'
@@ -22,6 +23,11 @@ export const moduleChoices = [
         name: moduleDisplayNameLocales.en.vanity,
         value: moduleIds.vanity,
         nameLocalizations: { 'es-ES': moduleDisplayNameLocales.es.vanity }
+    },
+    {
+        name: moduleDisplayNameLocales.en.clantag,
+        value: moduleIds.clantag,
+        nameLocalizations: { 'es-ES': moduleDisplayNameLocales.es.clantag }
     },
     {
         name: moduleDisplayNameLocales.en.mod,
@@ -66,6 +72,7 @@ export const moduleTextInputIds = {
 
 export const moduleDefaults = {
     vanityChannelName: 'vanity-logs',
+    clanTagChannelName: 'clantag-logs',
     modLogChannelName: 'mod-logs',
     mutedRoleName: 'Muted',
     thresholdMode: 'warns'

@@ -13,6 +13,7 @@ export {
 
 export { handleAutoModSetup } from './setup/autoModSetup';
 export { handleVanitySetup } from './setup/vanitySetup';
+export { handleClanTagSetup } from './setup/clanTagSetup';
 export { handleModSetup } from './setup/modSetup';
 export { handleLogsSetup } from './setup/logsSetup';
 

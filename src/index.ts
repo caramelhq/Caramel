@@ -7,6 +7,7 @@ import { connectDB, prisma } from './database/db';
 import { CaramelClient } from './structures/CaramelClient';
 import { container } from '@sapphire/framework';
 import { setupVanityWorker } from './workers/VanityWorker';
+import { setupClanTagWorker } from './workers/ClanTagWorker';
 import { setupSilentBanWorker } from './workers/SilentBanWorker';
 import { setupMuteWorker } from './workers/MuteWorker';
 import { setupTempBanWorker } from './workers/TempBanWorker';
@@ -24,6 +25,7 @@ async function bootstrap() {
         // Attach workers to container ──────────
 
         container.vanityWorker    = setupVanityWorker();
+        container.clanTagWorker   = setupClanTagWorker();
         container.silentBanWorker = setupSilentBanWorker();
         container.muteWorker      = setupMuteWorker();
         container.tempBanWorker    = setupTempBanWorker();
@@ -51,6 +53,7 @@ process.on('SIGTERM', async () => { await prisma.$disconnect(); process.exit(0);
 declare module '@sapphire/pieces' {
     interface Container {
         vanityWorker:    ReturnType<typeof setupVanityWorker>;
+        clanTagWorker:   ReturnType<typeof setupClanTagWorker>;
         silentBanWorker: ReturnType<typeof setupSilentBanWorker>;
         muteWorker:      ReturnType<typeof setupMuteWorker>;
         tempBanWorker:    ReturnType<typeof setupTempBanWorker>;

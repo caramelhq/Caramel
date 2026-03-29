@@ -37,6 +37,10 @@ export async function handleSettings(interaction: Subcommand.ChatInputCommandInt
         labels.role = t('layouts:settings.vanity.role');
         labels.channel = t('layouts:settings.vanity.channel');
         labels.usersWithVanity = t('layouts:settings.vanity.usersWithVanity');
+    } else if (moduleValue === moduleIds.clantag) {
+        labels.role = t('layouts:settings.clantag.role');
+        labels.channel = t('layouts:settings.clantag.channel');
+        labels.usersWithTag = t('layouts:settings.clantag.usersWithTag');
     } else if (moduleValue === moduleIds.mod) {
         labels.logChannel = t('layouts:settings.mod.logChannel');
         labels.mutedRole = t('layouts:settings.mod.mutedRole');

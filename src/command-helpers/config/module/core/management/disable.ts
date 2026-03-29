@@ -15,7 +15,8 @@ export async function handleDisable(interaction: Subcommand.ChatInputCommandInte
     await interaction.deferReply();
 
     const config = await prisma.guildConfig.findUnique({ where: { guildId: guildId! } });
-    const configKey = (moduleValue === moduleIds.automod ? 'automodModule' : `${moduleValue}Module`) as keyof typeof config;
+    const configKeyMap: Record<string, string> = { automod: 'automodModule', clantag: 'clanTagModule' };
+    const configKey = (configKeyMap[moduleValue] ?? `${moduleValue}Module`) as keyof typeof config;
 
     if (moduleValue === moduleIds.logs) {
         const logsConfig = await getLogsGuildConfig(guildId!);

@@ -5,6 +5,7 @@ import modulesEnUs from '../../../lib/i18n/en-US/modules.json';
 import modulesEsEs from '../../../lib/i18n/es-ES/modules.json';
 import {
     handleAutoModSetup,
+    handleClanTagSetup,
     handleDisable,
     handleEnable,
     handleLogsSetup,
@@ -108,6 +109,7 @@ export class ModuleCommand extends Subcommand {
         const moduleValue = interaction.options.getString(moduleOptionName, true);
 
         if (moduleValue === moduleIds.vanity) return handleVanitySetup(interaction);
+        if (moduleValue === moduleIds.clantag) return handleClanTagSetup(interaction);
         if (moduleValue === moduleIds.mod) return handleModSetup(interaction);
         if (moduleValue === moduleIds.automod) return handleAutoModSetup(interaction);
         if (moduleValue === moduleIds.logs) return handleLogsSetup(interaction);
