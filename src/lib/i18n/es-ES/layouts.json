@@ -14,6 +14,11 @@
       "channel": "Canal de Logs",
       "usersWithVanity": "Usuarios con Vanity"
     },
+    "clantag": {
+      "role": "Rol de Recompensa",
+      "channel": "Canal de Logs",
+      "usersWithTag": "Usuarios con Tag"
+    },
     "mod": {
       "logChannel": "Logs de Mod",
       "mutedRole": "Rol de Mute",

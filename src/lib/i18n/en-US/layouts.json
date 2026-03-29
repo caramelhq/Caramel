@@ -14,6 +14,11 @@
       "channel": "Log Channel",
       "usersWithVanity": "Users with Vanity"
     },
+    "clantag": {
+      "role": "Reward Role",
+      "channel": "Log Channel",
+      "usersWithTag": "Users with Tag"
+    },
     "mod": {
       "logChannel": "Mod Logs",
       "mutedRole": "Muted Role",

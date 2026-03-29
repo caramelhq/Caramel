@@ -7,8 +7,6 @@ export interface UserInfoLabels {
     highestRole: string;
     viewHistoryBtn: string;
     addNoteBtn: string;
-    badges: string;
-    clan: string;
 }
 
 export function getUserInfoLayout(
@@ -20,20 +18,15 @@ export function getUserInfoLayout(
     highestRoleIdStr: string, // Formatted ping <@&id> or string indicator
     accentColor: number,
     invokerId: string,
-    labels: UserInfoLabels,
-    badgesStr: string = '',
-    clanTag: string = ''
+    labels: UserInfoLabels
 ) {
-    const clanLine   = clanTag.length > 0   ? `\n\n**${labels.clan}**: \`${clanTag}\`` : '';
-    const badgesLine = badgesStr.length > 0 ? `\n\n**${labels.badges}**\n${badgesStr}` : '';
-
     return {
         flags: 32768, // Components V2 flag
         components: [
             ContainerComponent([
                 SectionComponent(
                     [
-                        TextDisplayComponent(`### <@${targetId}> (${targetUsername})\n\n**ID**: \`${targetId}\`${clanLine}\n\n**${labels.highestRole}**\n${highestRoleIdStr}\n\n**${labels.joinedDiscord}**:\n${joinedDiscordStr}\n\n**${labels.joinedServer}**:\n${joinedServerStr}${badgesLine}`)
+                        TextDisplayComponent(`### <@${targetId}> (${targetUsername})\n\n**ID**: \`${targetId}\`\n\n**${labels.highestRole}**\n${highestRoleIdStr}\n\n**${labels.joinedDiscord}**:\n${joinedDiscordStr}\n\n**${labels.joinedServer}**:\n${joinedServerStr}`)
                     ],
                     ThumbnailComponent(avatarUrl)
                 ),

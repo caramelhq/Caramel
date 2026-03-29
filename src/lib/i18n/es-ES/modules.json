@@ -41,6 +41,7 @@
     "alreadyDisabled": "{{cross}} El módulo **{{name}}** ya está deshabilitado.",
     "displayNames": {
       "vanity": "Vanity Tracker",
+      "clantag": "Clan Tag",
       "mod": "Moderación",
       "automod": "AutoMod",
       "logs": "Logs Avanzados"
@@ -100,6 +101,15 @@
         "summary": {
           "initialized": "Módulo AutoMod inicializado.",
           "hint": "Ahora puedes usar `/automod rule add` para empezar a filtrar."
+        }
+      },
+      "clantag": {
+        "modal": {
+          "title": "Configuración de Clan Tag Tracker",
+          "roleLabel": "ID o nombre del rol (opcional)",
+          "rolePlaceholder": "Rol de clan tag | Déjalo vacío para crearlo automáticamente",
+          "channelLabel": "ID o nombre del canal (opcional)",
+          "channelPlaceholder": "Canal de logs | Déjalo vacío para crearlo automáticamente"
         }
       },
       "vanity": {
