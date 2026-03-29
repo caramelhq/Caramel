@@ -13,6 +13,12 @@ export interface PermsServiceOptions {
     action?: string;
 }
 
+const ALL_ACTIONS = [
+    'ban', 'kick', 'warn', 'mute', 'timeout', 'softban', 'tempban',
+    'silentban', 'unban', 'unmute', 'untimeout', 'lockdown', 'slowmode',
+    'case', 'removecase', 'threshold', 'user', 'history',
+] as const;
+
 // ─────────────────────────────────────────────
 //  Target resolution
 // ─────────────────────────────────────────────
@@ -34,15 +40,23 @@ function resolveTarget(role: Role | APIRole | null, member: GuildMember | null) 
 export async function executePermsAllow({ interaction, guildId, role, member, action }: PermsServiceOptions) {
     const { targetId, targetType, display } = resolveTarget(role, member);
 
-    await prisma.modPermission.upsert({
-        where:  { guildId_targetId_action: { guildId, targetId, action: action! } },
-        create: { guildId, targetId, targetType, action: action!, type: 'ALLOW' },
-        update: { type: 'ALLOW', targetType },
-    });
+    if (action) {
+        await prisma.modPermission.upsert({
+            where:  { guildId_targetId_action: { guildId, targetId, action } },
+            create: { guildId, targetId, targetType, action, type: 'ALLOW' },
+            update: { type: 'ALLOW', targetType },
+        });
+    } else {
+        await prisma.modPermission.deleteMany({ where: { guildId, targetId } });
+        await prisma.modPermission.createMany({
+            data: ALL_ACTIONS.map(a => ({ guildId, targetId, targetType, action: a, type: 'ALLOW' as const })),
+        });
+    }
 
     await CacheManager.invalidateModPermissions(guildId);
 
-    const msg = await resolveKey(interaction, 'modcommands:perms.allow.success', { name: display, action });
+    const key = action ? 'modcommands:perms.allow.success' : 'modcommands:perms.allow.successAll';
+    const msg = await resolveKey(interaction, key, { name: display, action });
     return interaction.editReply({ flags: 32768, components: [ContainerComponent([TextDisplayComponent(msg)])] });
 }
 
@@ -54,15 +68,23 @@ export async function executePermsAllow({ interaction, guildId, role, member, ac
 export async function executePermsDeny({ interaction, guildId, role, member, action }: PermsServiceOptions) {
     const { targetId, targetType, display } = resolveTarget(role, member);
 
-    await prisma.modPermission.upsert({
-        where:  { guildId_targetId_action: { guildId, targetId, action: action! } },
-        create: { guildId, targetId, targetType, action: action!, type: 'DENY' },
-        update: { type: 'DENY', targetType },
-    });
+    if (action) {
+        await prisma.modPermission.upsert({
+            where:  { guildId_targetId_action: { guildId, targetId, action } },
+            create: { guildId, targetId, targetType, action, type: 'DENY' },
+            update: { type: 'DENY', targetType },
+        });
+    } else {
+        await prisma.modPermission.deleteMany({ where: { guildId, targetId } });
+        await prisma.modPermission.createMany({
+            data: ALL_ACTIONS.map(a => ({ guildId, targetId, targetType, action: a, type: 'DENY' as const })),
+        });
+    }
 
     await CacheManager.invalidateModPermissions(guildId);
 
-    const msg = await resolveKey(interaction, 'modcommands:perms.deny.success', { name: display, action });
+    const key = action ? 'modcommands:perms.deny.success' : 'modcommands:perms.deny.successAll';
+    const msg = await resolveKey(interaction, key, { name: display, action });
     return interaction.editReply({ flags: 32768, components: [ContainerComponent([TextDisplayComponent(msg)])] });
 }
 
@@ -75,17 +97,19 @@ export async function executePermsDelete({ interaction, guildId, role, member, a
     const { targetId, display } = resolveTarget(role, member);
 
     const deleted = await prisma.modPermission.deleteMany({
-        where: { guildId, targetId, action: action! },
+        where: action ? { guildId, targetId, action } : { guildId, targetId },
     });
 
     await CacheManager.invalidateModPermissions(guildId);
 
     if (deleted.count === 0) {
-        const msg = await resolveKey(interaction, 'modcommands:perms.delete.notFound', { name: display, action });
+        const key = action ? 'modcommands:perms.reset.notFound' : 'modcommands:perms.reset.notFoundAll';
+        const msg = await resolveKey(interaction, key, { name: display, action });
         return interaction.editReply({ flags: 32768, components: [ContainerComponent([TextDisplayComponent(msg)])] });
     }
 
-    const msg = await resolveKey(interaction, 'modcommands:perms.delete.success', { name: display, action });
+    const key = action ? 'modcommands:perms.reset.success' : 'modcommands:perms.reset.successAll';
+    const msg = await resolveKey(interaction, key, { name: display, count: deleted.count });
     return interaction.editReply({ flags: 32768, components: [ContainerComponent([TextDisplayComponent(msg)])] });
 }
 

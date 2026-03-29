@@ -124,13 +124,25 @@ export function parseEmoji(emojiStr: string) {
 }
 
 /**
- * Generates a textual progress bar
+ * Generates a textual progress bar using custom pb emojis
  */
-export function getProgressBar(position: number, duration: number, length: number = 8): string {
+export function getProgressBar(position: number, duration: number, length: number = 10): string {
     const safeDuration = duration > 0 ? duration : 1;
     const progress = Math.min(Math.max(position / safeDuration, 0), 1);
-    const filledLength = Math.round(length * progress);
-    
-    const bar = Emojis.progress_bar_emoji.repeat(filledLength) + Emojis.progress_dot_emoji + Emojis.progress_bar_emoji.repeat(Math.max(0, length - filledLength));
-    return `\`${formatDuration(position)}\` ${bar} \`${formatDuration(duration)}\``;
+    const cursor = Math.round((length - 1) * progress);
+
+    let bar = '';
+    for (let i = 0; i < length; i++) {
+        if (i < cursor) {
+            bar += i === 0 ? Emojis.pb_start_conn_emoji : Emojis.pb_passed_emoji;
+        } else if (i === cursor) {
+            if (i === 0) bar += Emojis.pb_start_emoji;
+            else if (i === length - 1) bar += Emojis.pb_end_emoji;
+            else bar += Emojis.pb_current_emoji;
+        } else {
+            bar += i === length - 1 ? Emojis.pb_end_conn_emoji : Emojis.pb_empty_emoji;
+        }
+    }
+
+    return `-# ${formatDuration(position)}  ${bar}  ${formatDuration(duration)}`;
 }

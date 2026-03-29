@@ -22,7 +22,7 @@ export function getSearchLayout(data: {
         const albumName = track.album || '—';
         
         const rawThumbnail = track.artworkUrl ?? `https://img.youtube.com/vi/${track.identifier}/hqdefault.jpg`;
-        const thumbnail = `https://images.weserv.nl/?url=${encodeURIComponent(rawThumbnail)}&w=512&h=512&fit=cover&a=center`;
+        const thumbnail = `https://images.weserv.nl/?url=${encodeURIComponent(rawThumbnail)}&w=256&h=256&fit=cover&a=center`;
 
         components.push(SeparatorComponent(1, true));
         components.push(SectionComponent(
@@ -122,7 +122,7 @@ export function getMusicPlayerLayout(data: {
         ]));
     }
 
-    return { flags: 32768, components: [ContainerComponent(components, data.accentColor)] };
+    return { flags: 32768, components: [ContainerComponent(components, data.accentColor ?? null)] };
 }
 
 export function getQueueLayout(data: {

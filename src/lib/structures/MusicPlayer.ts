@@ -6,11 +6,14 @@ import { resolveKey } from '@sapphire/plugin-i18next';
 import { TextChannel } from 'discord.js';
 import { getDominantColor } from '../utils/color';
 import { cleanTrackTitle, formatDuration } from '../utils/MusicUtils';
-import { getTrackDisplayMetadata } from '../utils/TrackMetadataResolver';
+import { getTrackDisplayMetadata, attachExternalMetadataToTrack } from '../utils/TrackMetadataResolver';
 import { MusicPlayerTimingMs, MusicStateTtlSeconds } from '../constants/musicUi';
 
 
 import { FilterPresets, FilterType } from '../constants/musicFilters';
+
+// Global artwork color cache — persists across track changes and player instances
+const artworkColorCache = new Map<string, number>();
 
 // Music player ──────────────────
 
@@ -23,6 +26,7 @@ export class MusicPlayer {
     public textChannelId: string | null = null;
     private lastMessageId: string | null = null;
     private currentTrackColor: number | null = null;
+    private pendingColorExtraction: { promise: Promise<number | null>; rawUrl: string } | null = null;
     private isProcessing: boolean = false;
     private idleTimeout: NodeJS.Timeout | null = null;
     private persistenceInterval: NodeJS.Timeout | null = null;
@@ -73,8 +77,39 @@ export class MusicPlayer {
             if (this.isRehydrating) return;
 
             container.logger.info(`🎵 [MUSIC] Started playing in ${this.guildId}: ${this.current?.info.title}`);
+
+            // Await the color that was started in parallel with playTrack — should be ready or nearly so
+            if (this.pendingColorExtraction) {
+                const { promise, rawUrl } = this.pendingColorExtraction;
+                this.pendingColorExtraction = null;
+                const color = await promise;
+                if (color) {
+                    artworkColorCache.set(rawUrl, color);
+                    this.currentTrackColor = color;
+                }
+            }
+
             await this.sendNowPlaying().catch(err => container.logger.error(`[MUSIC_PLAYER] Error sending now playing:`, err));
             await this.saveState().catch(() => null);
+
+            // Pre-load next track's color and metadata in background so they're ready when the track starts
+            const nextTrack = this.queue[0];
+            if (nextTrack) {
+                const nextDisplay = getTrackDisplayMetadata(nextTrack as any);
+                const nextRawThumbnail = nextDisplay.artworkUrl
+                    ?? `https://img.youtube.com/vi/${nextTrack.info.identifier}/maxresdefault.jpg`;
+
+                if (!artworkColorCache.has(nextRawThumbnail)) {
+                    getDominantColor(nextRawThumbnail)
+                        .catch(() => getDominantColor(`https://img.youtube.com/vi/${nextTrack.info.identifier}/hqdefault.jpg`))
+                        .then(color => { if (color) artworkColorCache.set(nextRawThumbnail, color); })
+                        .catch(() => null);
+                }
+
+                if (!(nextTrack as any).displayMetadata) {
+                    attachExternalMetadataToTrack(nextTrack as any).catch(() => null);
+                }
+            }
         });
 
         this.player.on('end', async (data) => {
@@ -245,7 +280,7 @@ export class MusicPlayer {
             }
 
             container.logger.info(`🎵 [MUSIC] Idle timeout reached in ${this.guildId}. Leaving...`);
-            
+
             // Send personality message
             if (this.textChannelId) {
                 const channel = await container.client.channels.fetch(this.textChannelId).catch(() => null) as TextChannel | null;
@@ -262,8 +297,11 @@ export class MusicPlayer {
             }
 
             const { music } = container;
-            await music.leaveVoiceChannel(this.guildId);
+            this.dispose();
             music.queues.delete(this.guildId);
+            await music.leaveVoiceChannel(this.guildId).catch(() => null);
+            // Fallback: disconnect directly via Discord.js in case Shoukaku's state is stale (e.g. bot was moved externally)
+            await guild?.members.me?.voice.disconnect().catch(() => null);
         }, MusicPlayerTimingMs.idleDisconnect);
     }
 
@@ -470,11 +508,21 @@ export class MusicPlayer {
                 return;
             }
 
-            // Double check: is the bot still in a voice channel before playing?
-            const guildCheck = container.client.guilds.cache.get(this.guildId);
-            if (!guildCheck?.members.me?.voice.channelId) {
-                this.isProcessing = false;
-                return;
+            // Start color extraction in parallel with playTrack so it's ready (or nearly) when 'start' fires
+            const curDisplay = getTrackDisplayMetadata(this.current as any);
+            const curRawUrl = curDisplay.artworkUrl
+                ?? `https://img.youtube.com/vi/${this.current.info.identifier}/maxresdefault.jpg`;
+            const cachedColor = artworkColorCache.get(curRawUrl);
+            if (cachedColor) {
+                this.currentTrackColor = cachedColor;
+                this.pendingColorExtraction = null;
+            } else {
+                this.pendingColorExtraction = {
+                    rawUrl: curRawUrl,
+                    promise: getDominantColor(curRawUrl)
+                        .catch(() => getDominantColor(`https://img.youtube.com/vi/${this.current!.info.identifier}/hqdefault.jpg`))
+                        .catch(() => null)
+                };
             }
 
             await this.player.playTrack({ track: { encoded: (this.current as any).encoded } });
@@ -695,56 +743,60 @@ export class MusicPlayer {
         if (!track || !track.info) return null;
         const display = getTrackDisplayMetadata(track);
 
-        const labels = {
-            nowPlaying:  await resolveKey(guild, 'music:labels.nowPlaying'),
-            requestedBy: await resolveKey(guild, 'music:labels.requestedBy'),
-            author:      await resolveKey(guild, 'music:labels.author'),
-            pause:       await resolveKey(guild, 'music:labels.pause'),
-            resume:      await resolveKey(guild, 'music:labels.resume'),
-            skip:        await resolveKey(guild, 'music:labels.skip'),
-            stop:        await resolveKey(guild, 'music:labels.stop'),
-            loop:        await resolveKey(guild, 'music:labels.loop'),
-            queue:       await resolveKey(guild, 'music:labels.queue'),
-            in:          await resolveKey(guild, 'music:labels.in'),
-            autoplay:    await resolveKey(guild, 'music:labels.autoplay')
-        };
-
-        const rawThumbnail = display.artworkUrl 
+        const rawThumbnail = display.artworkUrl
             ?? `https://img.youtube.com/vi/${track.info.identifier}/maxresdefault.jpg`;
 
-        // Apply image proxy (weserv.nl) for resizing and optimization
-        // We use the public proxy so Discord can access the images
-        const thumbnail = `https://images.weserv.nl/?url=${encodeURIComponent(rawThumbnail)}&w=512&h=512&fit=cover&a=center`;
+        // Resolve labels and favorite check in parallel
+        const [labelValues, isFavResult] = await Promise.all([
+            Promise.all([
+                resolveKey(guild, 'music:labels.nowPlaying'),
+                resolveKey(guild, 'music:labels.requestedBy'),
+                resolveKey(guild, 'music:labels.author'),
+                resolveKey(guild, 'music:labels.pause'),
+                resolveKey(guild, 'music:labels.resume'),
+                resolveKey(guild, 'music:labels.skip'),
+                resolveKey(guild, 'music:labels.stop'),
+                resolveKey(guild, 'music:labels.loop'),
+                resolveKey(guild, 'music:labels.queue'),
+                resolveKey(guild, 'music:labels.in'),
+                resolveKey(guild, 'music:labels.autoplay'),
+            ]),
+            userId && track.info.uri
+                ? container.db.userFavorite.findUnique({
+                    where: { userId_trackUrl: { userId, trackUrl: track.info.uri } }
+                }).catch(() => null)
+                : Promise.resolve(null)
+        ]);
 
+        const [nowPlaying, requestedBy, author, pause, resume, skip, stop, loop, queue, inLabel, autoplay] = labelValues;
+        const labels = { nowPlaying, requestedBy, author, pause, resume, skip, stop, loop, queue, in: inLabel, autoplay };
+        const isFavorited = !!isFavResult;
+
+        // Color is pre-extracted in playNext() in parallel with playTrack. Just read from cache/field.
+        // Fallback: if still null (e.g. loop restart, rehydration), extract it now so the color is never lost.
         if (!this.currentTrackColor) {
-            // If the thumbnail is maxresdefault, we might want to fallback to hqdefault for color extraction 
-            // if maxres doesn't exist, but usually getDominantColor handles errors or we can just try.
-            this.currentTrackColor = await getDominantColor(thumbnail).catch(() => getDominantColor(`https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`));
-        }
-
-        // Check if track is favorited by the user
-        let isFavorited = false;
-        if (userId && track.info.uri) {
-            const favorite = await container.db.userFavorite.findUnique({
-                where: {
-                    userId_trackUrl: {
-                        userId,
-                        trackUrl: track.info.uri
-                    }
+            const cached = artworkColorCache.get(rawThumbnail);
+            if (cached) {
+                this.currentTrackColor = cached;
+            } else {
+                const color = await getDominantColor(rawThumbnail)
+                    .catch(() => getDominantColor(`https://img.youtube.com/vi/${track.info.identifier}/hqdefault.jpg`))
+                    .catch(() => null);
+                if (color) {
+                    artworkColorCache.set(rawThumbnail, color);
+                    this.currentTrackColor = color;
                 }
-            }).catch(() => null);
-            isFavorited = !!favorite;
+            }
         }
 
-        // Get voice channel ID
-        const botMember = await guild.members.fetch(container.client.user!.id).catch(() => null);
-        const voiceChannelId = botMember?.voice.channelId;
+        // Get voice channel ID from cache (avoid unnecessary API call)
+        const voiceChannelId = guild.members.me?.voice.channelId;
 
 
         return getMusicPlayerLayout({
             title:       cleanTrackTitle(display.title, display.author),
             url:         track.info.uri ?? '',
-            thumbnail:   thumbnail,
+            thumbnail:   rawThumbnail,
             author:      display.author,
             requestedBy: (track as any).requestedBy ?? 'Unknown',
             isPaused:    this.player.paused,

@@ -132,14 +132,14 @@
     "perms": {
       "description": "Manage Caramel mod permission overrides",
       "subcommands": {
-        "allow": "Grant a role or member permission to use a mod action",
-        "deny": "Explicitly block a role or member from using a mod action",
-        "delete": "Remove a permission override",
-        "list": "View all permission overrides for a role or member"
+        "allow": "Grant a role or user permission to use a mod action",
+        "deny": "Explicitly block a role or user from using a mod action",
+        "reset": "Remove a permission override",
+        "list": "View all permission overrides for a role or user"
       },
       "options": {
         "role": "Target role",
-        "member": "Target member",
+        "user": "Target user",
         "action": "The mod action"
       }
     }
@@ -274,22 +274,26 @@
   },
   "perms": {
     "allow": {
-      "success": "{{name}} can now use `{{action}}`."
+      "success": "{{name}} can now use `{{action}}`.",
+      "successAll": "{{name}} has been granted access to all mod actions."
     },
     "deny": {
-      "success": "{{name}} is now explicitly denied from using `{{action}}`."
+      "success": "{{name}} is now explicitly denied from using `{{action}}`.",
+      "successAll": "{{name}} has been explicitly denied from all mod actions."
     },
-    "delete": {
+    "reset": {
       "success": "Removed permission override for {{name}} on `{{action}}`.",
-      "notFound": "No permission override found for {{name}} on `{{action}}`."
+      "notFound": "No permission override found for {{name}} on `{{action}}`.",
+      "successAll": "Removed all {{count}} permission override(s) for {{name}}.",
+      "notFoundAll": "No permission overrides found for {{name}}."
     },
     "list": {
       "empty": "No permission overrides found for {{name}}.",
       "title": "Permission overrides for {{name}}:"
     },
     "errors": {
-      "noTarget": "You must specify either a role or a member.",
-      "bothTargets": "Specify either a role or a member, not both.",
+      "noTarget": "You must specify either a role or a user.",
+      "bothTargets": "Specify either a role or a user, not both.",
       "denied": "You have been explicitly denied permission to use this command.",
       "noPermission": "You don't have permission to use this command."
     }

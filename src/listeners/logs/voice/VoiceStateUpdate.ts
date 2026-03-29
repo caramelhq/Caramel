@@ -110,9 +110,11 @@ export class VoiceStateUpdateListener extends Listener<typeof Events.VoiceStateU
                         await musicPlayer.clearState().catch(() => null);
                         musicPlayer.dispose();
                     }
-                    
-                    await music.leaveVoiceChannel(guild.id).catch(() => null);
+
                     music.queues.delete(guild.id);
+                    await music.leaveVoiceChannel(guild.id).catch(() => null);
+                    // Fallback: disconnect directly via Discord.js in case Shoukaku's state is stale (e.g. bot was moved externally)
+                    await guild.members.me?.voice.disconnect().catch(() => null);
                 }
             }, 3000); // 3 seconds
         }

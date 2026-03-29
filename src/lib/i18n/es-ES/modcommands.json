@@ -132,14 +132,14 @@
     "perms": {
       "description": "Gestionar permisos de moderación de Caramel",
       "subcommands": {
-        "allow": "Conceder permiso a un rol o miembro para usar una acción de moderación",
-        "deny": "Bloquear explícitamente a un rol o miembro del uso de una acción de moderación",
-        "delete": "Eliminar un permiso configurado",
-        "list": "Ver todos los permisos configurados para un rol o miembro"
+        "allow": "Conceder permiso a un rol o usuario para usar una acción de moderación",
+        "deny": "Bloquear explícitamente a un rol o usuario del uso de una acción de moderación",
+        "reset": "Eliminar un permiso configurado",
+        "list": "Ver todos los permisos configurados para un rol o usuario"
       },
       "options": {
         "role": "Rol objetivo",
-        "member": "Miembro objetivo",
+        "user": "Usuario objetivo",
         "action": "La acción de moderación"
       }
     }
@@ -274,22 +274,26 @@
   },
   "perms": {
     "allow": {
-      "success": "{{name}} ahora puede usar `{{action}}`."
+      "success": "{{name}} ahora puede usar `{{action}}`.",
+      "successAll": "{{name}} tiene acceso a todas las acciones de moderación."
     },
     "deny": {
-      "success": "{{name}} tiene denegado explícitamente el uso de `{{action}}`."
+      "success": "{{name}} tiene denegado explícitamente el uso de `{{action}}`.",
+      "successAll": "{{name}} tiene denegado explícitamente el uso de todas las acciones de moderación."
     },
-    "delete": {
+    "reset": {
       "success": "Se eliminó el permiso de {{name}} para `{{action}}`.",
-      "notFound": "No se encontró ningún permiso para {{name}} en `{{action}}`."
+      "notFound": "No se encontró ningún permiso para {{name}} en `{{action}}`.",
+      "successAll": "Se eliminaron {{count}} permiso(s) de {{name}}.",
+      "notFoundAll": "No se encontraron permisos configurados para {{name}}."
     },
     "list": {
       "empty": "No hay permisos configurados para {{name}}.",
       "title": "Permisos de {{name}}:"
     },
     "errors": {
-      "noTarget": "Debes especificar un rol o un miembro.",
-      "bothTargets": "Especifica solo un rol o un miembro, no ambos.",
+      "noTarget": "Debes especificar un rol o un usuario.",
+      "bothTargets": "Especifica solo un rol o un usuario, no ambos.",
       "denied": "Tienes denegado explícitamente el uso de este comando.",
       "noPermission": "No tienes permiso para usar este comando."
     }

@@ -132,7 +132,22 @@ export class PlayCommand extends Command {
         }
 
         // Direct Resolve (URL / Autocomplete selection)
-        const result = await resolveWithSpotifyFallback(this, node, query);
+        // Join voice and resolve the track in parallel — whichever finishes last wins
+        const existingMusicPlayer = music.queues.get(guild!.id);
+        const needsJoin = !existingMusicPlayer && !music.players.get(guild!.id);
+
+        const [result, earlyPlayer] = await Promise.all([
+            resolveWithSpotifyFallback(this, node, query),
+            needsJoin
+                ? music.joinVoiceChannel({
+                    guildId: guild!.id,
+                    channelId: member.voice.channelId,
+                    shardId: guild!.shardId,
+                    deaf: true
+                }).catch(() => null)
+                : Promise.resolve(null)
+        ]);
+
         this.container.logger.info(`[MUSIC] Direct resolve for "${query}": ${result?.loadType}`);
 
         if (!result || result.loadType === 'empty') {
@@ -147,20 +162,10 @@ export class PlayCommand extends Command {
 
         // Get or Create Player ──────────
 
-        let musicPlayer = music.queues.get(guild!.id);
+        let musicPlayer = existingMusicPlayer;
         if (!musicPlayer) {
-            // Check if Shoukaku already has a player for this guild (e.g. from a resumed session)
-            let player = music.players.get(guild!.id);
-
-            if (!player) {
-                player = await music.joinVoiceChannel({
-                    guildId: guild!.id,
-                    channelId: member.voice.channelId,
-                    shardId: guild!.shardId,
-                    deaf: true
-                });
-            }
-
+            const player = earlyPlayer ?? music.players.get(guild!.id);
+            if (!player) return interaction.editReply('`❌` Could not connect to voice channel.');
             musicPlayer = new MusicPlayer(guild!.id, player);
             music.queues.set(guild!.id, musicPlayer);
         }
@@ -206,17 +211,16 @@ export class PlayCommand extends Command {
             }
 
             const track = tracks[0] as any;
-            
+
             if (!track || !track.info) {
                 const errorMsg = await resolveKey(interaction, 'music:play.noResults');
                 return interaction.editReply({ ...getMessageLayout(errorMsg) });
             }
 
             track.requestedBy = interaction.user.id;
-            await attachExternalMetadataToTrack(track, query);
             musicPlayer.queue.push(track);
-            const display = getTrackDisplayMetadata(track);
-            const cleanedTitle = cleanTrackTitle(display.title, display.author);
+
+            const cleanedTitle = cleanTrackTitle(track.info.title, track.info.author);
             const duration = formatDuration(track.info.length ?? 0);
             const msg = await resolveKey(interaction, 'music:play.loaded', { title: `${cleanedTitle} - \`${duration}\`` });
             await interaction.editReply({ ...getMessageLayout(`${Emojis.check_emoji} ${msg}`) });
@@ -227,6 +231,17 @@ export class PlayCommand extends Command {
         if (!musicPlayer.current) {
             this.container.logger.info(`🎵 [MUSIC] Triggering playNext from command for ${guild!.id}`);
             await musicPlayer.playNext();
+
+            // Fetch external metadata for the track that just became current and refresh the layout.
+            // Only done here (not when queuing into an already-playing session) to avoid spurious edits.
+            const nowCurrent = musicPlayer.current;
+            if (nowCurrent && !(nowCurrent as any).displayMetadata) {
+                attachExternalMetadataToTrack(nowCurrent as any, query).then(() => {
+                    if (musicPlayer!.current?.info?.identifier === nowCurrent.info?.identifier) {
+                        musicPlayer!.refresh().catch(() => null);
+                    }
+                }).catch(() => null);
+            }
         }
     }
 }

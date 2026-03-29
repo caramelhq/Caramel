@@ -114,8 +114,6 @@ export const Emojis = {
     skip_emoji: '<:skip_button:1485081020087668857>',
     loop_emoji: '<:loop_button_off:1485083150697631864>',
     loop_on_emoji: '<:loop_button_on:1485083163142393946>',
-    progress_dot_emoji: '<:progress_bar_dot:1485114514386063460>',
-    progress_bar_emoji: '<:progress_bar:1485114499890544882>',
     queue_emoji: '<:queue_button:1485081827122352128>',
     music_emoji: '<:music:1485110826905108572>',
     volume_emoji: '<:volume:1485723741353938974>',
@@ -123,6 +121,15 @@ export const Emojis = {
     next_page_emoji: '<:arrow_right:1485076968566296656>',
     favorite_song_emoji: '<:favorite_button:1485113639873548449>',
     unfavorite_song_emoji: '<:unfavorite_button:1485113651055825007>',
+
+    // Progress Bar
+    pb_start_emoji: '<:pb_start:1487645843829035088>',
+    pb_start_conn_emoji: '<:pb_start_conn:1487645922921021591>',
+    pb_passed_emoji: '<:pb_passed:1487645899214815262>',
+    pb_current_emoji: '<:pb_current:1487645881825231080>',
+    pb_empty_emoji: '<:pb_empty:1487645909054390455>',
+    pb_end_conn_emoji: '<:pb_end_conn:1487645932735561819>',
+    pb_end_emoji: '<:pb_end:1487645855833002014>',
 
     preview_emoji: '<:preview:1486531367146618890>',
     logs_emoji: '<:logs:1486533269385248899>',

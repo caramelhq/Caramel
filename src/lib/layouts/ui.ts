@@ -19,11 +19,11 @@
  */
 export const ContainerComponent = (
     components: any[],
-    accentColor: number = 0xd77655,
+    accentColor: number | null = 0xd77655,
     spoiler: boolean = false
 ) => ({
     type: 17,
-    accent_color: accentColor,
+    ...(accentColor !== null && { accent_color: accentColor }),
     spoiler,
     components,
 });
