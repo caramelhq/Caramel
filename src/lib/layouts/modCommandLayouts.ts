@@ -162,10 +162,12 @@ export function getModuleLayout(
   labels: any,
   logsConfig: LogsGuildConfig | null = null,
 ) {
+  const moduleConfigKeyMap: Record<string, string> = { automod: 'automodModule', clantag: 'clanTagModule' };
+  const moduleConfigKey = moduleConfigKeyMap[moduleName] ?? `${moduleName}Module`;
   const isEnabled =
     moduleName === "logs"
       ? Boolean(logsConfig?.enabled)
-      : ((config as any)[`${moduleName}Module`] as boolean);
+      : ((config as any)[moduleConfigKey] as boolean);
   const bullet = (value: unknown) =>
     value ? Emojis.enabled_setting_emoji : Emojis.disabled_setting_emoji;
 
@@ -188,6 +190,25 @@ export function getModuleLayout(
           : `\`${labels.notSet}\``
       }`,
       `${Emojis.static_setting_emoji} **${labels.usersWithVanity}**: \`${
+        role ? role.members.size : 0
+      }\``,
+    ].join("\n");
+  }
+
+  if (moduleName === "clantag") {
+    const role = guild.roles.cache.get((config as any).clanTagRoleId ?? "");
+    details = [
+      `${bullet((config as any).clanTagRoleId)} **${labels.role}**: ${
+        (config as any).clanTagRoleId
+          ? `<@&${(config as any).clanTagRoleId}>`
+          : `\`${labels.notSet}\``
+      }`,
+      `${bullet((config as any).clanTagChannelId)} **${labels.channel}**: ${
+        (config as any).clanTagChannelId
+          ? `<#${(config as any).clanTagChannelId}>`
+          : `\`${labels.notSet}\``
+      }`,
+      `${Emojis.static_setting_emoji} **${labels.usersWithTag}**: \`${
         role ? role.members.size : 0
       }\``,
     ].join("\n");

@@ -3,7 +3,6 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { resolveKey } from '@sapphire/plugin-i18next';
 import { getUserInfoLayout } from '../../../lib/layouts/infoLayouts';
 import { requireModPermission } from '../../../command-helpers/mod/shared/permissionGuard';
-import { getBadgesStr } from '../../../lib/utils/UserBadges';
 import { type Message, type GuildMember, type User, time, TimestampStyles } from 'discord.js';
 import infoCommandsEnUs from '../../../lib/i18n/en-US/infocommands.json';
 import infoCommandsEsEs from '../../../lib/i18n/es-ES/infocommands.json';
@@ -38,17 +37,16 @@ export class UserCommand extends Command {
         targetUser: User,
         targetMember: GuildMember | null
     ) {
-        const labels = {
-            joinedDiscord:  await resolveKey(interactionOrMessage, 'infocommands:user.labels.joinedDiscord'),
-            joinedServer:   await resolveKey(interactionOrMessage, 'infocommands:user.labels.joinedServer'),
-            highestRole:    await resolveKey(interactionOrMessage, 'infocommands:user.labels.highestRole'),
-            viewHistoryBtn: await resolveKey(interactionOrMessage, 'infocommands:user.labels.viewHistory'),
-            addNoteBtn:     await resolveKey(interactionOrMessage, 'infocommands:user.labels.addNote'),
-            notInServer:    await resolveKey(interactionOrMessage, 'infocommands:user.labels.notInServer'),
-            none:           await resolveKey(interactionOrMessage, 'infocommands:user.labels.none'),
-            badges:         await resolveKey(interactionOrMessage, 'infocommands:user.labels.badges'),
-            clan:           await resolveKey(interactionOrMessage, 'infocommands:user.labels.clan'),
-        };
+        const [joinedDiscord, joinedServer, highestRole, viewHistoryBtn, addNoteBtn, notInServer, none] = await Promise.all([
+            resolveKey(interactionOrMessage, 'infocommands:user.labels.joinedDiscord'),
+            resolveKey(interactionOrMessage, 'infocommands:user.labels.joinedServer'),
+            resolveKey(interactionOrMessage, 'infocommands:user.labels.highestRole'),
+            resolveKey(interactionOrMessage, 'infocommands:user.labels.viewHistory'),
+            resolveKey(interactionOrMessage, 'infocommands:user.labels.addNote'),
+            resolveKey(interactionOrMessage, 'infocommands:user.labels.notInServer'),
+            resolveKey(interactionOrMessage, 'infocommands:user.labels.none'),
+        ]);
+        const labels = { joinedDiscord, joinedServer, highestRole, viewHistoryBtn, addNoteBtn };
 
         const createdDateStr = `${time(targetUser.createdAt, TimestampStyles.LongDate)} (${time(targetUser.createdAt, TimestampStyles.RelativeTime)})`;
         
@@ -60,7 +58,7 @@ export class UserCommand extends Command {
             if (targetMember.joinedAt) {
                 joinedDateStr = `${time(targetMember.joinedAt, TimestampStyles.LongDate)} (${time(targetMember.joinedAt, TimestampStyles.RelativeTime)})`;
             }
-            
+
             const highestRole = targetMember.roles.highest;
             if (highestRole.id !== targetMember.guild.id) { // Not everyone
                 highestRoleStr = `<@&${highestRole.id}>`;
@@ -73,9 +71,6 @@ export class UserCommand extends Command {
         const avatarUrl = targetMember?.displayAvatarURL({ size: 1024 }) || targetUser.displayAvatarURL({ size: 1024 });
         const invokerId = 'user' in interactionOrMessage ? interactionOrMessage.user.id : interactionOrMessage.author.id;
 
-        const badgesStr = getBadgesStr(targetUser, targetMember);
-        const clanTag   = targetUser.primaryGuild?.tag ?? '';
-
         return getUserInfoLayout(
             targetUser.id,
             targetUser.username,
@@ -85,9 +80,7 @@ export class UserCommand extends Command {
             highestRoleStr,
             accentColor,
             invokerId,
-            labels,
-            badgesStr,
-            clanTag
+            labels
         );
     }
 
@@ -96,8 +89,7 @@ export class UserCommand extends Command {
             await requireModPermission(interaction.member as GuildMember, 'user');
         }
 
-        // Force-fetch to ensure flags, premiumType, and primaryGuild are populated
-        const targetUser = await (interaction.options.getUser('target') ?? interaction.user).fetch(true);
+        const targetUser = interaction.options.getUser('target') ?? interaction.user;
         const targetMember = interaction.options.getMember('target') as GuildMember | null
             ?? (targetUser.id === interaction.user.id ? interaction.member as GuildMember : null);
 
@@ -110,9 +102,7 @@ export class UserCommand extends Command {
             await requireModPermission(message.member, 'user');
         }
 
-        // Force-fetch to ensure flags, premiumType, and primaryGuild are populated
-        const pickedUser = await args.pick('user').catch(() => message.author);
-        const targetUser = await pickedUser.fetch(true);
+        const targetUser = await args.pick('user').catch(() => message.author);
         let targetMember: GuildMember | null = null;
 
         if (message.guild) {
