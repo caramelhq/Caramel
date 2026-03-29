@@ -1,4 +1,5 @@
 import { Command } from '@sapphire/framework';
+import { Track } from 'shoukaku';
 import { GuildMember } from 'discord.js';
 import { getMessageLayout } from '../../../lib/layouts/defaultLayout';
 import { getSearchLayout } from '../../../lib/layouts/musicLayouts';
@@ -234,7 +235,7 @@ export class PlayCommand extends Command {
 
             // Fetch external metadata for the track that just became current and refresh the layout.
             // Only done here (not when queuing into an already-playing session) to avoid spurious edits.
-            const nowCurrent = musicPlayer.current;
+            const nowCurrent = musicPlayer.current as Track | null;
             if (nowCurrent && !(nowCurrent as any).displayMetadata) {
                 attachExternalMetadataToTrack(nowCurrent as any, query).then(() => {
                     if (musicPlayer!.current?.info?.identifier === nowCurrent.info?.identifier) {
