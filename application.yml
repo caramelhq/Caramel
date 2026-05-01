@@ -46,6 +46,10 @@ plugins:
       - ANDROID_VR
       - WEB
       - WEB_REMIX
+    oauth:
+      enabled: true
+      # refreshToken: "${YOUTUBE_REFRESH_TOKEN}"
+      # skipInitialization: true
   
   lavasrc:
     providers:
@@ -70,3 +74,4 @@ logging:
   level:
     root: INFO
     lavalink: INFO
+    dev.lavalink.youtube.http.YoutubeOauth2Handler: INFO
