@@ -13,6 +13,7 @@ import { setupMuteWorker } from './workers/MuteWorker';
 import { setupTempBanWorker } from './workers/TempBanWorker';
 import { setupTicketWorker } from './workers/TicketWorker';
 import { MusicManager } from './lib/structures/MusicManager';
+import { startStatsServer } from './api/StatsServer';
 
 
 // Bootstrap ──────────────────
@@ -22,6 +23,7 @@ const client = new CaramelClient();
 async function bootstrap() {
     try {
         await connectDB();
+        startStatsServer(Number(process.env.API_PORT) || 4000);
 
         // Attach workers to container ──────────
 

@@ -92,6 +92,9 @@ export class CacheManager {
             pipeline.set(`general:locale:${guildId}`, (config as any).locale);
             pipeline.set(`general:prefix:${guildId}`, (config as any).prefix);
 
+            if (config.mentionResponse) pipeline.set(`general:mention_response:${guildId}`, config.mentionResponse);
+            else pipeline.del(`general:mention_response:${guildId}`);
+
             await pipeline.exec();
         } catch (error) {
             logger.error(`[CACHE_MANAGER] Failed to sync guild ${guildId}:`, error);
@@ -267,6 +270,12 @@ export class CacheManager {
         const { redis } = container;
         const prefix = await redis.get(`general:prefix:${guildId}`);
         return prefix ?? process.env.PREFIX ?? 'c!';
+    }
+
+
+    public static async getMentionResponse(guildId: string): Promise<string | null> {
+        const { redis } = container;
+        return redis.get(`general:mention_response:${guildId}`);
     }
 
 

@@ -19,6 +19,15 @@
       "optionDescription": "The new prefix (max 5 chars, no spaces)",
       "invalid": "{{cross}} The prefix must be between 1 and 5 characters and cannot contain spaces.",
       "success": "{{check}} The prefix has been updated to: `{{prefix}}`"
+    },
+    "mention": {
+      "command": {
+        "description": "Customize the bot's mention response message"
+      },
+      "optionDescription": "The message to send when the bot is mentioned (leave empty to reset)",
+      "reset": "{{check}} The mention response has been reset to the default.",
+      "success": "{{check}} Mention response updated.",
+      "defaultResponse": "Hi! My prefix is `{{prefix}}`."
     }
   },
   "module": {

@@ -118,6 +118,7 @@ export class CaramelClient extends SapphireClient {
 
         this.music = new MusicManager(this);
         container.music = this.music;
+
     }
 
 

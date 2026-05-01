@@ -62,8 +62,9 @@ model GuildConfig {
     ticketsPanelMessageId      String?  @map("tickets_panel_message_id")
 
     // General ──────────
-    locale String @default("en-US") @map("locale")
-    prefix String @default("c!") @map("prefix")
+    locale          String  @default("en-US") @map("locale")
+    prefix          String  @default("c!") @map("prefix")
+    mentionResponse String? @map("mention_response")
 
     createdAt DateTime @default(now()) @map("created_at")
     updatedAt DateTime @updatedAt @map("updated_at")

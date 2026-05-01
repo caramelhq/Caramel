@@ -197,8 +197,8 @@ export class MusicManager extends Shoukaku {
         const nodes = [
             {
                 name: 'LocalNode-01',
-                url: 'localhost:2333',
-                auth: 'youshallnotpass',
+                url: `${process.env.LAVALINK_HOST ?? 'localhost'}:${process.env.LAVALINK_PORT ?? '2333'}`,
+                auth: process.env.LAVALINK_PASSWORD ?? 'youshallnotpass',
                 secure: false
             }
         ];

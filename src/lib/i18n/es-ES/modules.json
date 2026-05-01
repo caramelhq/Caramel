@@ -19,6 +19,15 @@
       "optionDescription": "El nuevo prefijo (máx 5 caracteres, sin espacios)",
       "invalid": "{{cross}} El prefijo debe tener entre 1 y 5 caracteres y no puede contener espacios.",
       "success": "{{check}} El prefijo ha sido actualizado a: `{{prefix}}`"
+    },
+    "mention": {
+      "command": {
+        "description": "Personaliza el mensaje de respuesta al mencionar al bot"
+      },
+      "optionDescription": "El mensaje a enviar al mencionar al bot (deja vacío para restablecer)",
+      "reset": "{{check}} La respuesta de mención ha sido restablecida al valor predeterminado.",
+      "success": "{{check}} Respuesta de mención actualizada.",
+      "defaultResponse": "¡Hola! Mi prefijo es `{{prefix}}`."
     }
   },
   "module": {
