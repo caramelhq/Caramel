@@ -76,7 +76,7 @@ export async function handleTicketsSetup(interaction: Subcommand.ChatInputComman
     const categoryRaw = modalSubmit.fields.getTextInputValue(TICKETS_INPUT_IDS.category).trim();
     const transcriptChannelRaw = modalSubmit.fields.getTextInputValue(TICKETS_INPUT_IDS.transcriptChannel).trim();
     const logChannelRaw = modalSubmit.fields.getTextInputValue(TICKETS_INPUT_IDS.logChannel).trim();
-    const supporterRoleIds = (modalSubmit.fields.getSelectedRoles(TICKETS_INPUT_IDS.supporterRoles) ?? []).map((r: any) => r.id);
+    const supporterRoleIds = ((modalSubmit.fields.getSelectedRoles(TICKETS_INPUT_IDS.supporterRoles) ?? []) as any[]).map((r: any) => r.id as string);
 
     // Validate panel channel (required)
     const panelChannelResult = await resolveChannel(modalSubmit, panelChannelRaw, guild!, 'tickets');
@@ -92,7 +92,7 @@ export async function handleTicketsSetup(interaction: Subcommand.ChatInputComman
     if (categoryRaw) previewActions.push(`Use category: <#${categoryRaw}>`);
     if (transcriptChannelRaw) previewActions.push(`Transcript channel: <#${transcriptChannelRaw}>`);
     if (logChannelRaw) previewActions.push(`Log channel: <#${logChannelRaw}>`);
-    if (supporterRoleIds.length) previewActions.push(`Supporter roles: ${supporterRoleIds.map(id => `<@&${id}>`).join(', ')}`);
+    if (supporterRoleIds.length) previewActions.push(`Supporter roles: ${supporterRoleIds.map((id: string) => `<@&${id}>`).join(', ')}`);
     previewActions.push('Send panel message to panel channel');
 
     await runSetupFlow(
@@ -146,7 +146,7 @@ export async function handleTicketsSetup(interaction: Subcommand.ChatInputComman
             // Supporter roles
             if (supporterRoleIds.length) {
                 data.ticketsSupporterRoleIds = supporterRoleIds;
-                summaryActions.push(`Supporter roles: ${supporterRoleIds.map(id => `<@&${id}>`).join(', ')}`);
+                summaryActions.push(`Supporter roles: ${supporterRoleIds.map((id: string) => `<@&${id}>`).join(', ')}`);
             }
 
             // Send panel message — fetch the panel description from i18n

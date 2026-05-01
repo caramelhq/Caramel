@@ -114,8 +114,8 @@ export class PermsCommand extends Subcommand {
         const focused = interaction.options.getFocused(true);
         if (focused.name !== 'action') return interaction.respond([]);
 
-        const role   = interaction.options.getRole('role');
-        const user   = interaction.options.getMember('user') ?? interaction.options.getUser('user');
+        const role   = (interaction.options as any).getRole('role');
+        const user   = (interaction.options as any).getMember('user') ?? (interaction.options as any).getUser('user');
         const targetId = role?.id ?? (user as any)?.id ?? null;
 
         if (!targetId) return interaction.respond([]);
