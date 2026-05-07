@@ -2,21 +2,12 @@
   "name": "caramellabs",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "web"
-  ],
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
-    "lavalink:start": "java -jar Lavalink.jar",
-    "bot:dev": "tsx watch src/index.ts",
-    "bot:start": "node dist/index.js",
-    "bot:build": "tsc",
-    "web:dev": "npm run dev --workspace=web",
-    "web:build": "npm run build --workspace=web",
-    "web:start": "npm run start --workspace=web"
+    "lavalink:start": "java -jar Lavalink.jar"
   },
   "keywords": [],
   "author": "",
@@ -27,7 +18,7 @@
     "@types/pg": "^8.18.0",
     "@types/validator": "^13.15.10",
     "dotenv": "^17.3.1",
-    "prisma": "^7.4.2",
+    "prisma": "^7.8.0",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
@@ -42,8 +33,8 @@
     "@sapphire/plugin-i18next": "^8.0.0",
     "@sapphire/plugin-logger": "^4.1.0",
     "@sapphire/plugin-subcommands": "^7.0.1",
-    "bullmq": "^5.70.0",
-    "discord.js": "^14.25.1",
+    "bullmq": "^5.76.6",
+    "discord.js": "^14.26.4",
     "eslint": "^8.52.0",
     "ffmpeg-static": "^5.3.0",
     "i18next": "^25.8.14",

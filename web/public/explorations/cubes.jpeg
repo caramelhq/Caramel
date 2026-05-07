@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
-  <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2a1a0a"/><stop offset="50%" stop-color="#5a3a1a"/><stop offset="100%" stop-color="#8a5a2a"/>
-    </linearGradient>
-  </defs>
-  <rect width="800" height="800" fill="url(#g)"/>
-  <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="rgba(255,255,255,0.3)" font-family="sans-serif" font-size="14">Cubes</text>
-</svg>
