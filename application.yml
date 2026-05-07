@@ -5,7 +5,7 @@ server:
 lavalink:
   plugins:
     # YouTube Plugin
-    - dependency: "dev.lavalink.youtube:youtube-plugin:1.11.0"
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.1"
       repository: "https://maven.lavalink.dev/releases"
     # LavaSrc Plugin (Spotify/Apple Music)
     - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.1"
@@ -43,7 +43,7 @@ plugins:
     allowDirectPlaylistIds: true
     clients:
       - MUSIC
-      - WEB
+      - ANDROID_MUSIC
       - ANDROID_VR
     oauth:
       enabled: true
@@ -52,9 +52,6 @@ plugins:
 
   lavasrc:
     providers:
-      - 'ytmsearch:"%ISRC%"'
-      - 'ytmsearch:"%TITLE% %ARTIST%"'
-      - 'ytsearch:"%TITLE% %ARTIST%"'
       - 'scsearch:"%TITLE% %ARTIST%"'
     sources:
       spotify: true
@@ -75,3 +72,5 @@ logging:
     root: INFO
     lavalink: INFO
     dev.lavalink.youtube.http.YoutubeOauth2Handler: INFO
+    com.github.topi314.lavasrc: DEBUG
+    com.sedmelluq.discord.lavaplayer.source.soundcloud: DEBUG
