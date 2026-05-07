@@ -365,6 +365,7 @@ export class MusicPlayer {
     // Plays the next track in the queue ──────────
 
     public async playNext(): Promise<void> {
+        process.stdout.write(`[DEBUG_ENTRY] playNext called: disposed=${this.disposed} isProcessing=${this.isProcessing} current=${this.current?.info?.title ?? 'null'} queue=${this.queue.length}\n`);
         if (this.disposed) return;
         if (this.isProcessing) return;
         
