@@ -124,9 +124,21 @@ export class MusicPlayer {
             if (this.loop && this.current && data.reason === 'finished') {
                 const trackToRepeat = { ...this.current };
                 container.logger.info(`🎵 [MUSIC] Looping track in ${this.guildId}`);
-                const repeatIdentifier = trackToRepeat.info.uri
-                    ?? (trackToRepeat.info.sourceName === 'spotify' ? `https://open.spotify.com/track/${trackToRepeat.info.identifier}` : null);
-                await this.player.playTrack({ track: repeatIdentifier ? { identifier: repeatIdentifier } : { encoded: (trackToRepeat as any).encoded } }).catch(() => this.playNext());
+
+                if (trackToRepeat.info.sourceName === 'spotify') {
+                    // Resolve Spotify → YouTube to avoid lavasrc %TITLE%/%ARTIST% substitution bug
+                    const resolved = await this.resolveSpotifyTrackForPlayback(trackToRepeat);
+                    if (resolved) {
+                        this.current = resolved;
+                        await this.player.playTrack({ track: { encoded: (resolved as any).encoded } }).catch(() => this.playNext());
+                    } else {
+                        // Resolution failed — fall back to original encoded track and hope for the best
+                        await this.player.playTrack({ track: { encoded: (trackToRepeat as any).encoded } }).catch(() => this.playNext());
+                    }
+                } else {
+                    const repeatIdentifier = trackToRepeat.info.uri ?? null;
+                    await this.player.playTrack({ track: repeatIdentifier ? { identifier: repeatIdentifier } : { encoded: (trackToRepeat as any).encoded } }).catch(() => this.playNext());
+                }
             } else {
                 await this.playNext();
             }
@@ -314,6 +326,41 @@ export class MusicPlayer {
         }
     }
 
+
+    // Spotify → YouTube resolution ──────────
+
+    /**
+     * Resolves a Spotify track to a playable YouTube track via ytsearch before handing it to Lavalink.
+     * This bypasses the lavasrc 4.8.1 bug where %TITLE%/%ARTIST% are never substituted in the
+     * SoundCloud mirroring path, causing "UnknownArtist - 04 - UnknownTitle" to play every time.
+     *
+     * Returns the resolved YouTube Track (with Spotify artwork preserved), or null if resolution fails.
+     * Callers must fall back to the original encoded track when null is returned.
+     */
+    private async resolveSpotifyTrackForPlayback(track: Track): Promise<Track | null> {
+        const node = this.player.node;
+        const query = `ytsearch:${track.info.author} ${track.info.title}`;
+
+        container.logger.info(`[MUSIC_PLAYER] Resolving Spotify track to YouTube: "${track.info.author} - ${track.info.title}"`);
+
+        const result = await node.rest.resolve(query).catch(() => null);
+        if (!result || result.loadType !== 'search' || !result.data?.length) {
+            container.logger.warn(`[MUSIC_PLAYER] YouTube resolution failed for Spotify track: "${track.info.author} - ${track.info.title}"`);
+            return null;
+        }
+
+        const ytTrack = (result.data as Track[])[0];
+
+        // Preserve Spotify artwork and requestedBy on the resolved YouTube track
+        if (track.info.artworkUrl && !ytTrack.info.artworkUrl) {
+            ytTrack.info.artworkUrl = track.info.artworkUrl;
+        }
+        (ytTrack as any).requestedBy = (track as any).requestedBy;
+        (ytTrack as any).displayMetadata = (track as any).displayMetadata ?? null;
+
+        container.logger.info(`[MUSIC_PLAYER] Resolved to YouTube: "${ytTrack.info.title}" by "${ytTrack.info.author}"`);
+        return ytTrack;
+    }
 
     // Plays the next track in the queue ──────────
 
@@ -510,7 +557,23 @@ export class MusicPlayer {
                 return;
             }
 
-            // Start color extraction in parallel with playTrack so it's ready (or nearly) when 'start' fires
+            if (this.current.info.sourceName === 'spotify') {
+                // Resolve Spotify → YouTube before sending to Lavalink to avoid lavasrc
+                // %TITLE%/%ARTIST% substitution bug (lavasrc 4.8.1) that always plays
+                // "UnknownArtist - 04 - UnknownTitle" via SoundCloud mirroring.
+                const resolved = await this.resolveSpotifyTrackForPlayback(this.current);
+                if (resolved) {
+                    this.current = resolved;
+                } else {
+                    // TODO: remove once lavasrc fixes the %TITLE%/%ARTIST% substitution bug
+                    // (https://github.com/topi314/LavaSrc/issues). Falling back to encoded
+                    // will likely play the wrong SoundCloud track, but at least playback continues.
+                    container.logger.warn(`[MUSIC_PLAYER] Spotify resolution failed for "${this.current.info.title}" — falling back to encoded (may play wrong track)`);
+                }
+            }
+
+            // Start color extraction in parallel with playTrack so it's ready (or nearly) when 'start' fires.
+            // This runs after Spotify resolution so curRawUrl reflects the final track (YouTube or fallback).
             const curDisplay = getTrackDisplayMetadata(this.current as any);
             const curRawUrl = curDisplay.artworkUrl
                 ?? `https://img.youtube.com/vi/${this.current.info.identifier}/maxresdefault.jpg`;
@@ -527,8 +590,9 @@ export class MusicPlayer {
                 };
             }
 
-            const playIdentifier = this.current.info.uri
-                ?? (this.current.info.sourceName === 'spotify' ? `https://open.spotify.com/track/${this.current.info.identifier}` : null);
+            const playIdentifier = this.current.info.sourceName !== 'spotify'
+                ? (this.current.info.uri ?? null)
+                : null;
             await this.player.playTrack({ track: playIdentifier ? { identifier: playIdentifier } : { encoded: (this.current as any).encoded } });
         } catch (error) {
             container.logger.error(`[MUSIC_PLAYER] Error in playNext for ${this.guildId}:`, error);
