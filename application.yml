@@ -42,9 +42,10 @@ plugins:
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
     clients:
-      - MUSIC
-      - WEB
+      - IOS
+      - ANDROID_MUSIC
       - ANDROID_VR
+      - MUSIC
     oauth:
       enabled: true
       refreshToken: "${YOUTUBE_REFRESH_TOKEN}"
@@ -52,7 +53,8 @@ plugins:
 
   lavasrc:
     providers:
-      - 'ytsearch:"%ISRC%"'
+      - 'ytmsearch:"%ISRC%"'
+      - 'ytmsearch:"%TITLE% %ARTIST%"'
       - 'ytsearch:"%TITLE% %ARTIST%"'
       - 'scsearch:"%TITLE% %ARTIST%"'
     sources:
