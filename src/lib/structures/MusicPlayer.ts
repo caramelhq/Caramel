@@ -339,33 +339,35 @@ export class MusicPlayer {
      */
     private async resolveSpotifyTrackForPlayback(track: Track): Promise<Track | null> {
         const node = this.player.node;
-        const query = `ytsearch:${track.info.author} ${track.info.title}`;
+        const searchTerm = `${track.info.author} ${track.info.title}`;
+        const queries = [`ytsearch:${searchTerm}`, `scsearch:${searchTerm}`];
 
-        container.logger.info(`[MUSIC_PLAYER] Resolving Spotify track to YouTube: "${track.info.author} - ${track.info.title}"`);
+        for (const query of queries) {
+            container.logger.info(`[MUSIC_PLAYER] Resolving Spotify track: "${searchTerm}" via ${query.split(':')[0]}`);
+            const result = await node.rest.resolve(query).catch(() => null);
+            if (!result || result.loadType !== 'search' || !result.data?.length) {
+                container.logger.warn(`[MUSIC_PLAYER] ${query.split(':')[0]} failed for: "${searchTerm}"`);
+                continue;
+            }
 
-        const result = await node.rest.resolve(query).catch(() => null);
-        if (!result || result.loadType !== 'search' || !result.data?.length) {
-            container.logger.warn(`[MUSIC_PLAYER] YouTube resolution failed for Spotify track: "${track.info.author} - ${track.info.title}"`);
-            return null;
+            const resolved = (result.data as Track[])[0];
+            if (track.info.artworkUrl && !resolved.info.artworkUrl) {
+                resolved.info.artworkUrl = track.info.artworkUrl;
+            }
+            (resolved as any).requestedBy = (track as any).requestedBy;
+            (resolved as any).displayMetadata = (track as any).displayMetadata ?? null;
+
+            container.logger.info(`[MUSIC_PLAYER] Resolved to ${resolved.info.sourceName}: "${resolved.info.title}" by "${resolved.info.author}"`);
+            return resolved;
         }
 
-        const ytTrack = (result.data as Track[])[0];
-
-        // Preserve Spotify artwork and requestedBy on the resolved YouTube track
-        if (track.info.artworkUrl && !ytTrack.info.artworkUrl) {
-            ytTrack.info.artworkUrl = track.info.artworkUrl;
-        }
-        (ytTrack as any).requestedBy = (track as any).requestedBy;
-        (ytTrack as any).displayMetadata = (track as any).displayMetadata ?? null;
-
-        container.logger.info(`[MUSIC_PLAYER] Resolved to YouTube: "${ytTrack.info.title}" by "${ytTrack.info.author}"`);
-        return ytTrack;
+        container.logger.warn(`[MUSIC_PLAYER] All resolution attempts failed for: "${searchTerm}"`);
+        return null;
     }
 
     // Plays the next track in the queue ──────────
 
     public async playNext(): Promise<void> {
-        process.stdout.write(`[DEBUG_ENTRY] playNext called: disposed=${this.disposed} isProcessing=${this.isProcessing} current=${this.current?.info?.title ?? 'null'} queue=${this.queue.length}\n`);
         if (this.disposed) return;
         if (this.isProcessing) return;
         
@@ -557,8 +559,6 @@ export class MusicPlayer {
                 this.isProcessing = false;
                 return;
             }
-
-            container.logger.info(`[DEBUG_MUSIC] sourceName="${this.current.info.sourceName}" title="${this.current.info.title}"`);
 
             if (this.current.info.sourceName === 'spotify') {
                 // Resolve Spotify → YouTube before sending to Lavalink to avoid lavasrc
