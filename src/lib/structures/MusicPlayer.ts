@@ -557,6 +557,8 @@ export class MusicPlayer {
                 return;
             }
 
+            container.logger.info(`[DEBUG_MUSIC] sourceName="${this.current.info.sourceName}" title="${this.current.info.title}"`);
+
             if (this.current.info.sourceName === 'spotify') {
                 // Resolve Spotify → YouTube before sending to Lavalink to avoid lavasrc
                 // %TITLE%/%ARTIST% substitution bug (lavasrc 4.8.1) that always plays
