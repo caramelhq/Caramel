@@ -124,7 +124,9 @@ export class MusicPlayer {
             if (this.loop && this.current && data.reason === 'finished') {
                 const trackToRepeat = { ...this.current };
                 container.logger.info(`🎵 [MUSIC] Looping track in ${this.guildId}`);
-                await this.player.playTrack({ track: trackToRepeat.info.uri ? { identifier: trackToRepeat.info.uri } : { encoded: (trackToRepeat as any).encoded } }).catch(() => this.playNext());
+                const repeatIdentifier = trackToRepeat.info.uri
+                    ?? (trackToRepeat.info.sourceName === 'spotify' ? `https://open.spotify.com/track/${trackToRepeat.info.identifier}` : null);
+                await this.player.playTrack({ track: repeatIdentifier ? { identifier: repeatIdentifier } : { encoded: (trackToRepeat as any).encoded } }).catch(() => this.playNext());
             } else {
                 await this.playNext();
             }
@@ -525,7 +527,9 @@ export class MusicPlayer {
                 };
             }
 
-            await this.player.playTrack({ track: this.current.info.uri ? { identifier: this.current.info.uri } : { encoded: (this.current as any).encoded } });
+            const playIdentifier = this.current.info.uri
+                ?? (this.current.info.sourceName === 'spotify' ? `https://open.spotify.com/track/${this.current.info.identifier}` : null);
+            await this.player.playTrack({ track: playIdentifier ? { identifier: playIdentifier } : { encoded: (this.current as any).encoded } });
         } catch (error) {
             container.logger.error(`[MUSIC_PLAYER] Error in playNext for ${this.guildId}:`, error);
             // If failed, try the next one after a small delay
