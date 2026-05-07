@@ -1,11 +1,14 @@
 import { createServer } from 'node:http';
 import { container } from '@sapphire/framework';
+import { UptimeTracker } from './UptimeTracker';
 
 export function startStatsServer(port: number): void {
-    const token = process.env.STATS_API_TOKEN;
+    const token   = process.env.STATS_API_TOKEN;
+    const tracker = new UptimeTracker();
+    tracker.start();
 
     const server = createServer((req, res) => {
-        if (req.method !== 'GET' || req.url !== '/stats') {
+        if (req.method !== 'GET') {
             res.writeHead(404).end();
             return;
         }
@@ -15,13 +18,26 @@ export function startStatsServer(port: number): void {
             return;
         }
 
-        const client = container.client;
-        const servers  = client.guilds.cache.size;
-        const users    = client.guilds.cache.reduce((acc, g) => acc + (g.memberCount ?? 0), 0);
-        const commands = container.stores.get('commands').size;
+        const url = req.url?.split('?')[0];
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ servers, users, commands }));
+        if (url === '/stats') {
+            const client   = container.client;
+            const servers  = client.guilds.cache.size;
+            const users    = client.guilds.cache.reduce((acc, g) => acc + (g.memberCount ?? 0), 0);
+            const commands = container.stores.get('commands').size;
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ servers, users, commands }));
+            return;
+        }
+
+        if (url === '/stats/history') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(tracker.getHistory()));
+            return;
+        }
+
+        res.writeHead(404).end();
     });
 
     server.listen(port, () => {
