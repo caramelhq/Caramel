@@ -66,10 +66,10 @@ export class SearchSelectorHandler extends InteractionHandler {
 
         musicPlayer.textChannelId = interaction.channelId;
         
-        // If nothing is playing, play immediately, otherwise add to queue
+        // If nothing is playing, play immediately via playNext so Spotify tracks get resolved
         if (!musicPlayer.current) {
-            musicPlayer.current = track;
-            await musicPlayer.player.playTrack({ track: { encoded: (track as any).encoded } });
+            musicPlayer.queue.unshift(track);
+            await musicPlayer.playNext();
         } else {
             musicPlayer.queue.push(track);
             await musicPlayer.saveState();
