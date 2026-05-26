@@ -182,16 +182,47 @@ export function LogsSetupPage3(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Config Page: Customize selected blocks
+// Config Page: Customize selected blocks (paginated, 10/page)
 // ─────────────────────────────────────────────────────────────
+
+const CONFIG_PAGE_SIZE = 10;
 
 export function LogsSetupConfigPage(
   session: LogsWizardSession,
   text: LogsWizardViewText,
 ) {
+  const pageIndex = session.configPageIndex ?? 0;
   const activeCategories = logCategories.filter((c) =>
     session.selectedCategories.includes(c.id),
   );
+  const totalPages = Math.max(1, Math.ceil(activeCategories.length / CONFIG_PAGE_SIZE));
+  const pageCategories = activeCategories.slice(
+    pageIndex * CONFIG_PAGE_SIZE,
+    (pageIndex + 1) * CONFIG_PAGE_SIZE,
+  );
+
+  const isFirstPage = pageIndex === 0;
+  const isLastPage = pageIndex >= totalPages - 1;
+  const allConfigured = activeCategories.every(
+    (c) =>
+      session.blocks[c.id] && session.blocks[c.id]!.enabledEvents.length > 0,
+  );
+
+  // Left button: "back to step 3" on first page, "← prev" on subsequent pages
+  const leftButton = isFirstPage
+    ? ButtonComponent("logswz:config:back", text.blockConfig.cancel, 2)
+    : ButtonComponent("logswz:configpage:prev", "←", 2);
+
+  // Right button: "→ next" on non-last pages, "Apply" on last page
+  const rightButton = isLastPage
+    ? ButtonComponent(
+        "logswz:configpage:apply",
+        text.review.apply,
+        3,
+        undefined,
+        !allConfigured,
+      )
+    : ButtonComponent("logswz:configpage:next", "→", 2);
 
   return {
     flags: 32768,
@@ -199,21 +230,18 @@ export function LogsSetupConfigPage(
       ContainerComponent([
         TextDisplayComponent("Customize your logs:"),
         SeparatorComponent(1),
-        ...buildConfigSections(activeCategories, session),
+        ...buildConfigSections(pageCategories, session),
         SeparatorComponent(1),
         ActionRowComponent([
-          ButtonComponent("logswz:config:back", text.blockConfig.cancel, 2),
+          leftButton,
           ButtonComponent(
-            "logswz:configpage:apply",
-            text.review.apply,
-            3,
+            "logswz:page:config",
+            `${pageIndex + 1}/${totalPages}`,
+            2,
             undefined,
-            activeCategories.some(
-              (c) =>
-                !session.blocks[c.id] ||
-                session.blocks[c.id]!.enabledEvents.length === 0,
-            ),
+            true,
           ),
+          rightButton,
         ]),
       ]),
     ],
@@ -357,9 +385,7 @@ export function LogsSetupReview(
       ContainerComponent(
         [
           TextDisplayComponent(headerText),
-          ...blockLines
-            .map((line) => [SeparatorComponent(), TextDisplayComponent(line)])
-            .flat(),
+          ...blockLines.map((line) => TextDisplayComponent(line)),
           SeparatorComponent(),
           ActionRowComponent([
             ButtonComponent("logswz:review:cancel", text.review.cancel, 2),

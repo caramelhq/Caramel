@@ -127,6 +127,7 @@ export class LogsWizardButtonHandler extends InteractionHandler {
     // Finish selection → show config page
     if (customId === "logswz:step3:next") {
       session.step = 4;
+      session.configPageIndex = 0;
       await saveLogsWizardSession(session);
       return interaction.editReply(LogsSetupConfigPage(session, text) as any);
     }
@@ -134,8 +135,22 @@ export class LogsWizardButtonHandler extends InteractionHandler {
     // Config page → back to selection
     if (customId === "logswz:config:back") {
       session.step = 3;
+      session.configPageIndex = 0;
       await saveLogsWizardSession(session);
       return interaction.editReply(LogsSetupPage3(session, text) as any);
+    }
+
+    // Config page pagination
+    if (customId === "logswz:configpage:prev") {
+      session.configPageIndex = Math.max(0, (session.configPageIndex ?? 0) - 1);
+      await saveLogsWizardSession(session);
+      return interaction.editReply(LogsSetupConfigPage(session, text) as any);
+    }
+
+    if (customId === "logswz:configpage:next") {
+      session.configPageIndex = (session.configPageIndex ?? 0) + 1;
+      await saveLogsWizardSession(session);
+      return interaction.editReply(LogsSetupConfigPage(session, text) as any);
     }
 
     // Open block configuration

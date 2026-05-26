@@ -52,6 +52,7 @@ export type LogsWizardSession = {
   blocks: Partial<Record<LogCategoryId, LogBlockConfig>>;
   activeConfigBlock: LogCategoryId | null;
   mainMessageId: string | null;
+  configPageIndex?: number;
   createdAt: number;
   updatedAt: number;
 };
