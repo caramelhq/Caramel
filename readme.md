@@ -117,34 +117,27 @@ This starts PostgreSQL and Redis and waits for both to report healthy. Host port
 
 ### 3. Run the bot
 
+The bot runs on your machine, not in Docker, so you can restart it freely:
+
 ```bash
-npm install
+pnpm install
 npx prisma generate
 npx prisma migrate deploy
-npm run dev
+pnpm run dev
 ```
 
-`npm run dev` runs the bot through `tsx watch`, so it restarts on every save. The `DATABASE_URL` and `REDIS_URL` in `.env` already point at the two containers.
+`pnpm run dev` runs the bot through `tsx watch`, so it restarts on every save. The `DATABASE_URL` and `REDIS_URL` in `.env` already point at the two containers.
 
 In VS Code, press **F5** instead — `.vscode/launch.json` ships two configurations, `Bot (debug)` with working breakpoints and `Bot (watch)` with hot-reload. Both bring the infrastructure up first, and `Ctrl+Shift+F5` restarts the bot.
 
-### Running the bot in Docker too
-
-The bot service sits behind a Compose profile, so the default `up` leaves it alone. Use the profile to exercise the same image that runs in production:
+Stopping the infrastructure:
 
 ```bash
-docker compose --profile bot up -d --build
-docker compose logs -f bot
+docker compose down      # stop PostgreSQL and Redis
+docker compose down -v   # ...and wipe their data volumes
 ```
 
-That builds the image, waits on the health checks, applies pending migrations and connects to Discord — a fresh clone works on the first try. Compose overrides `DATABASE_URL` and `REDIS_URL` for that container with the internal service addresses, so the host-facing values in `.env` keep working for `prisma` commands run outside Docker.
-
-Don't run both at once: two processes sharing one bot token means Discord delivers every interaction twice.
-
-```bash
-docker compose down      # stop everything
-docker compose down -v   # ...and wipe the data volumes
-```
+Production is the exception — there the bot does run in a container, built from the `Dockerfile` and wired up in `docker-compose.prod.yml`.
 
 ---
 

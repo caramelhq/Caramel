@@ -1,11 +1,10 @@
-# Local development stack.
+# Local development infrastructure: PostgreSQL and Redis only.
 #
-#   docker compose up -d                      PostgreSQL + Redis only — run the
-#                                             bot from your editor against these
-#   docker compose --profile bot up -d --build  ...and the bot in a container too
+#   docker compose up -d      start both, wait until healthy
+#   docker compose down       stop (add -v to wipe the data volumes)
 #
-# The bot sits behind a profile so the default `up` leaves it to you. Use the
-# profile to exercise the real production image.
+# The bot itself runs on the host — `pnpm run dev` — against these two.
+# Production runs the bot in a container; see docker-compose.prod.yml.
 
 services:
   postgres:
@@ -40,28 +39,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-
-  bot:
-    build: .
-    container_name: caramel-bot
-    restart: unless-stopped
-    # Not started by a plain `docker compose up` — see the header.
-    profiles: ["bot"]
-    env_file: .env
-    environment:
-      # Inside the compose network the services are reachable by name on their
-      # internal ports, so the host-facing values in .env must be overridden.
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      REDIS_URL: redis://redis:6379
-    ports:
-      - "4000:4000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    # Apply pending migrations before booting, so a fresh volume works first try.
-    command: sh -c "npx prisma migrate deploy && node dist/index.js"
 
 volumes:
   postgres_data:
