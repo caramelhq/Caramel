@@ -5,9 +5,12 @@ import { CacheManager } from '../database/CacheManager';
 import { getCounterLayout } from '../lib/layouts/counterLayouts';
 import {
     collectStats,
+    countVoice,
+    fetchCounts,
     isCounterChannel,
     statsEqual,
     type CounterChannel,
+    type CounterCounts,
     type CounterStats
 } from '../lib/utils/counterStats';
 
@@ -17,20 +20,52 @@ import {
 // One timer drives every guild rather than one timer each: the work per tick is
 // small and a single loop keeps the scheduling in one place.
 //
-// Ticking is cheap only because of the comparison below — a guild whose numbers
-// did not move costs one guild fetch and no edit. Editing unconditionally on a
-// short interval would run straight into the per-channel rate limit.
+// The three numbers move on very different clocks, so they are read on very
+// different ones too.
+//
+// Voice is exact, free and immediate: the gateway pushes every change. It does
+// not wait for the timer at all — the voice state listener calls
+// notifyVoiceChange and the message is redrawn a moment later, which is what
+// keeps "who is in the call" honest.
+//
+// Online and total are Discord's approximate counts, which Discord itself only
+// recomputes every few minutes. Asking for them faster than that buys nothing
+// but requests, so they sit on a slow cadence of their own.
+//
+// The timer is then only a floor: it drives the counts refresh, the rescan, and
+// catches any voice change the event path dropped. All of it is cheap only
+// because of the comparison below — a guild whose numbers did not move costs
+// nothing at all. Editing unconditionally would run straight into the
+// per-channel rate limit.
 
-const DEFAULT_INTERVAL_MS = 15_000;
+const DEFAULT_INTERVAL_MS = 5_000;
+const MIN_INTERVAL_MS = 5_000;
 
-/** How often the active set is re-read from the database, in ticks. */
-const RESCAN_EVERY_TICKS = 20;
+const DEFAULT_COUNTS_INTERVAL_MS = 60_000;
+const MIN_COUNTS_INTERVAL_MS = 15_000;
+
+/**
+ * How long a voice event waits before redrawing. Long enough to fold a whole
+ * call filling up into one edit, short enough that nobody notices the delay —
+ * and it keeps the guild well under the per-channel edit limit even if someone
+ * sits there joining and leaving.
+ */
+const VOICE_DEBOUNCE_MS = 1_500;
+
+/** How often the active set is re-read from the database. */
+const RESCAN_INTERVAL_MS = 300_000;
 
 interface GuildCounter {
     channel: CounterChannel;
     messageId: string | null;
     lastStats: CounterStats | null;
-    /** In-flight edit. While set, ticks for this guild are dropped. */
+    /** Last approximate counts from Discord, reused between refreshes. */
+    counts: CounterCounts | null;
+    /** When the counts are due to be fetched again. */
+    nextCountsAt: number;
+    /** After a failed update, the guild is skipped until this timestamp. */
+    retryAt: number;
+    /** In-flight tick. While set, further ticks for this guild are dropped. */
     inFlight: Promise<void> | null;
 }
 
@@ -45,17 +80,30 @@ export class CounterBusyError extends Error {
 export class CounterService {
     private readonly client: Client;
     private readonly intervalMs: number;
+    private readonly countsIntervalMs: number;
     private readonly counters = new Map<string, GuildCounter>();
     private readonly switching = new Set<string>();
+    /** Pending debounced redraws, one per guild at most. */
+    private readonly voiceTimers = new Map<string, NodeJS.Timeout>();
 
     private timer: NodeJS.Timeout | null = null;
     private stopped = false;
-    private ticksSinceRescan = 0;
+    private nextRescanAt = 0;
 
     public constructor(client: Client) {
         this.client = client;
-        const configured = Number(process.env.COUNTER_INTERVAL_MS);
-        this.intervalMs = Number.isFinite(configured) && configured >= 5000 ? configured : DEFAULT_INTERVAL_MS;
+        this.intervalMs = readInterval(process.env.COUNTER_INTERVAL_MS, DEFAULT_INTERVAL_MS, MIN_INTERVAL_MS);
+
+        // Never faster than the render tick: fetching counts the message cannot
+        // be redrawn to show would be pure waste.
+        this.countsIntervalMs = Math.max(
+            readInterval(
+                process.env.COUNTER_COUNTS_INTERVAL_MS,
+                DEFAULT_COUNTS_INTERVAL_MS,
+                MIN_COUNTS_INTERVAL_MS
+            ),
+            this.intervalMs
+        );
     }
 
     /** Channel the counter is published in for a guild, or null. */
@@ -71,7 +119,8 @@ export class CounterService {
         await this.rescan();
         this.schedule();
         container.logger.info(
-            `[COUNTER] Tracking ${this.counters.size} guild(s), refreshing every ${this.intervalMs}ms.`
+            `[COUNTER] Tracking ${this.counters.size} guild(s), refreshing every ${this.intervalMs}ms ` +
+                `(member counts every ${this.countsIntervalMs}ms).`
         );
     }
 
@@ -81,6 +130,10 @@ export class CounterService {
             clearInterval(this.timer);
             this.timer = null;
         }
+
+        for (const timer of this.voiceTimers.values()) clearTimeout(timer);
+        this.voiceTimers.clear();
+
         await Promise.all(
             [...this.counters.values()].map((counter) => counter.inFlight?.catch(() => undefined))
         );
@@ -118,6 +171,11 @@ export class CounterService {
                 channel,
                 messageId: message.id,
                 lastStats: stats,
+                // Just fetched for the first render — no reason to ask again on
+                // the next tick.
+                counts: { online: stats.online, total: stats.total },
+                nextCountsAt: Date.now() + this.countsIntervalMs,
+                retryAt: 0,
                 inFlight: null
             });
 
@@ -133,9 +191,49 @@ export class CounterService {
         const counter = this.counters.get(guildId);
         if (!counter) return;
 
+        const pendingRedraw = this.voiceTimers.get(guildId);
+        if (pendingRedraw !== undefined) {
+            clearTimeout(pendingRedraw);
+            this.voiceTimers.delete(guildId);
+        }
+
         await counter.inFlight?.catch(() => undefined);
         await this.deleteMessage(counter.channel, counter.messageId);
         this.counters.delete(guildId);
+    }
+
+
+    // Voice ──────────
+
+    /**
+     * Somebody joined, left or moved between voice channels. Redraws shortly
+     * after, rather than at the next tick, so the voice number tracks the call
+     * in something close to real time.
+     *
+     * Debounced per guild: a burst of joins is one edit, not one per person. The
+     * redraw still compares before editing, so a move between two channels — no
+     * change to the number — costs nothing.
+     */
+    public notifyVoiceChange(guildId: string): void {
+        if (this.stopped || this.voiceTimers.has(guildId)) return;
+        if (!this.counters.has(guildId)) return;
+
+        this.voiceTimers.set(
+            guildId,
+            setTimeout(() => {
+                this.voiceTimers.delete(guildId);
+
+                const counter = this.counters.get(guildId);
+                if (this.stopped || !counter) return;
+
+                // Busy or backing off. Dropping it is safe: the timer sweeps the
+                // guild anyway, so the change lands one tick later at worst.
+                if (this.switching.has(guildId) || counter.inFlight !== null) return;
+                if (Date.now() < counter.retryAt) return;
+
+                this.runTick(guildId, counter);
+            }, VOICE_DEBOUNCE_MS)
+        );
     }
 
 
@@ -146,17 +244,39 @@ export class CounterService {
 
         // Picks up guilds that enabled the module after boot, and drops ones
         // whose configuration disappeared.
-        if (++this.ticksSinceRescan >= RESCAN_EVERY_TICKS) {
-            this.ticksSinceRescan = 0;
+        if (Date.now() >= this.nextRescanAt) {
             await this.rescan().catch((error) =>
                 container.logger.error('[COUNTER] Rescan failed:', error)
             );
         }
 
+        const now = Date.now();
+
         for (const [guildId, counter] of this.counters) {
-            if (this.switching.has(guildId) || counter.inFlight !== null) continue;
-            void this.tickGuild(guildId, counter);
+            if (this.switching.has(guildId) || counter.inFlight !== null || now < counter.retryAt) continue;
+            this.runTick(guildId, counter);
         }
+    }
+
+    /**
+     * Runs one pass for a guild and holds it in inFlight. The whole pass is held,
+     * not just the edit: the counts refresh in front of it is a round trip too,
+     * and a slow one must not let the next pass in behind it.
+     *
+     * The caller is expected to have checked that the guild is free.
+     */
+    private runTick(guildId: string, counter: GuildCounter): void {
+        const pending = this.tickGuild(guildId, counter).catch((error) => {
+            // A channel that cannot be written to would otherwise fail once per
+            // tick; back off to the slow cadence until it recovers.
+            counter.retryAt = Date.now() + this.countsIntervalMs;
+            container.logger.error(`[COUNTER] Could not update the counter for ${guildId}:`, error);
+        });
+
+        counter.inFlight = pending;
+        void pending.finally(() => {
+            if (counter.inFlight === pending) counter.inFlight = null;
+        });
     }
 
     private async tickGuild(guildId: string, counter: GuildCounter): Promise<void> {
@@ -168,29 +288,29 @@ export class CounterService {
         const guild = this.client.guilds.cache.get(guildId);
         if (!guild) return;
 
-        let stats: CounterStats;
-        try {
-            stats = await collectStats(guild);
-        } catch (error) {
-            container.logger.error(`[COUNTER] Could not collect stats for ${guildId}:`, error);
-            return;
+        if (counter.counts === null || Date.now() >= counter.nextCountsAt) {
+            // Best effort: a failed refresh keeps the previous counts on screen
+            // and leaves voice live, which beats blanking the message.
+            try {
+                counter.counts = await fetchCounts(guild);
+            } catch (error) {
+                container.logger.error(`[COUNTER] Could not refresh the counts for ${guildId}:`, error);
+            }
+
+            counter.nextCountsAt = Date.now() + this.countsIntervalMs;
         }
+
+        // Nothing to render yet — the very first refresh failed.
+        if (counter.counts === null) return;
+
+        const stats: CounterStats = { ...counter.counts, voice: countVoice(guild) };
 
         // Nothing moved — skip the edit entirely.
         if (counter.lastStats !== null && statsEqual(counter.lastStats, stats)) return;
 
-        const pending = this.update(counter, stats);
-        counter.inFlight = pending;
-
-        try {
-            await pending;
-            // Only committed on success, so a failure retries next tick.
-            counter.lastStats = stats;
-        } catch (error) {
-            container.logger.error(`[COUNTER] Could not update the counter for ${guildId}:`, error);
-        } finally {
-            counter.inFlight = null;
-        }
+        await this.update(counter, stats);
+        // Only committed on success, so a failure retries on a later tick.
+        counter.lastStats = stats;
     }
 
     private async update(counter: GuildCounter, stats: CounterStats): Promise<void> {
@@ -223,6 +343,9 @@ export class CounterService {
 
     /** Loads every guild with the module configured, reusing its message when still there. */
     private async rescan(): Promise<void> {
+        // Set up front so a failure does not retry on every tick.
+        this.nextRescanAt = Date.now() + RESCAN_INTERVAL_MS;
+
         const configs = await prisma.guildConfig.findMany({
             where: { counterModule: true, NOT: { counterChannelId: null } }
         });
@@ -254,6 +377,9 @@ export class CounterService {
                 channel,
                 messageId: config.counterMessageId,
                 lastStats: null,
+                counts: null,
+                nextCountsAt: 0,
+                retryAt: 0,
                 inFlight: null
             });
         }
@@ -289,4 +415,10 @@ export class CounterService {
             container.logger.warn('[COUNTER] Could not delete the previous message:', error);
         }
     }
+}
+
+/** Env overrides are only honoured above their floor; anything else falls back. */
+function readInterval(raw: string | undefined, fallback: number, minimum: number): number {
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed >= minimum ? parsed : fallback;
 }

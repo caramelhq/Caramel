@@ -27,7 +27,7 @@ It is deliberately small. Four modules ship today — moderation, vanity tracker
 
 **Tickets** — A panel users open tickets from, supporter claiming, message transcripts, and scheduled auto-close for inactive threads.
 
-**Member Counter** — Publishes one message showing online members, total members and members in voice, then keeps editing it in place. Online and total come from Discord's approximate counts, so the module costs one request per tick regardless of how large the server is; voice is exact, straight off the gateway. A tick where nothing changed makes no edit at all.
+**Member Counter** — Publishes one message showing online members, total members and members in voice, then keeps editing it in place. Voice is exact and free — it comes straight off the gateway — so it is redrawn as people join and leave, a second or two behind the call rather than a tick behind it. Online and total are Discord's approximate counts, which Discord only recomputes every few minutes; those are re-fetched once a minute, one request regardless of how large the server is. A tick where nothing changed makes no edit at all.
 
 ---
 
