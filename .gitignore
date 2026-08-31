@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# TypeScript compilation
+dist/
+*.tsbuildinfo
+
+# Config & Secrets
+.env
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
+
+# Lockfiles (project uses npm — ignore alternatives)
+pnpm-lock.yaml
+yarn.lock
+
+# Logs
+*.log
+npm-debug.log*
+
+# System & Editors
+.DS_Store
+.vscode/
+.idea/
+
+# Bot — generated
+/src/generated/prisma
+
+# Web — Next.js
+web/.next/
+web/out/
+web/.turbopack/
+web/.source/
+web/pnpm-lock.yaml
+web/next-env.d.ts
+
+# LLM context / agent instruction files
+AGENTS.md
+web/CHAT_CONTEXT.md
+/.claude
