@@ -1,10 +1,11 @@
-version: '3.8'
+# Local development stack. `docker compose up -d --build` brings up
+# PostgreSQL, Redis and the bot, applies migrations and connects to Discord.
 
 services:
   postgres:
     image: postgres:15
     container_name: caramel-postgres
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER:     ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -13,14 +14,47 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   redis:
     image: redis:alpine
     container_name: caramel-redis
-    restart: always
+    restart: unless-stopped
     ports:
       - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
+  bot:
+    build: .
+    container_name: caramel-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Inside the compose network the services are reachable by name on their
+      # internal ports, so the host-facing values in .env must be overridden.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Apply pending migrations before booting, so a fresh volume works first try.
+    command: sh -c "npx prisma migrate deploy && node dist/index.js"
 
 volumes:
   postgres_data:
+  redis_data:

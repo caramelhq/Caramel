@@ -92,60 +92,50 @@ Two ideas hold the codebase together:
 - [Docker](https://www.docker.com/) and Docker Compose
 - A [Discord Application](https://discord.com/developers/applications) with a bot token
 
-### 1. Clone and install
+### 1. Clone and configure
 
 ```bash
 git clone https://github.com/CaramelHQ/Caramel.git
 cd Caramel
-npm install
-```
-
-### 2. Start infrastructure
-
-```bash
-docker compose up -d
-```
-
-This creates two containers. Note the host ports — they are **not** the defaults:
-
-| Service    | Container         | Host port | Internal port |
-| ---------- | ----------------- | --------- | ------------- |
-| PostgreSQL | `caramel-postgres` | **5433**  | 5432          |
-| Redis      | `caramel-redis`    | **6380**  | 6379          |
-
-Compose reads `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB` from your `.env`, so fill that in first.
-
-### 3. Configure environment
-
-```bash
 cp .env.example .env
 ```
 
-Fill in your values. The ports must match docker-compose:
+Fill in `.env`. At minimum you need `DISCORD_TOKEN`; the database and Redis values already point at what Compose provisions. Set `DEVELOPMENT_GUILD_IDS` to your test server's ID so slash commands appear there instantly instead of waiting on global propagation.
 
-```env
-DISCORD_TOKEN=your_bot_token
-CLIENT_ID=your_client_id
-
-# Port 5433, not 5432
-DATABASE_URL=postgresql://admin:secure_password@localhost:5433/caramel
-
-# Port 6380, not 6379
-REDIS_URL=redis://localhost:6380
-```
-
-### 4. Set up the database
+### 2. Run everything
 
 ```bash
+docker compose up -d --build
+```
+
+That is the whole setup. Compose builds the bot image, starts PostgreSQL and Redis, waits for both to pass their health checks, applies pending migrations, and connects to Discord. Three containers appear in Docker Desktop:
+
+| Container          | Service    | Host port | Internal port |
+| ------------------ | ---------- | --------- | ------------- |
+| `caramel-bot`      | Bot        | 4000      | 4000          |
+| `caramel-postgres` | PostgreSQL | **5433**  | 5432          |
+| `caramel-redis`    | Redis      | **6380**  | 6379          |
+
+Host ports are deliberately non-default so they don't collide with a local PostgreSQL or Redis.
+
+```bash
+docker compose logs -f bot   # follow the bot
+docker compose down          # stop (add -v to also wipe the data volumes)
+```
+
+### Running the bot outside Docker
+
+For hot-reload while developing, keep only the infrastructure in Docker and run the bot on the host:
+
+```bash
+docker compose up -d postgres redis
+npm install
 npx prisma generate
 npx prisma migrate deploy
-```
-
-### 5. Run
-
-```bash
 npm run dev
 ```
+
+The `DATABASE_URL` and `REDIS_URL` in `.env` are written for this case — they point at `localhost:5433` and `localhost:6380`. The bot container doesn't use them; Compose overrides both with the internal service addresses.
 
 ---
 
@@ -205,7 +195,7 @@ Nothing is active until you configure it. Each module is set up and enabled per 
 | `lockdown`    | Toggle channel lockdown                |
 | `case`        | View a specific case                   |
 | `remove-case` | Delete a case                          |
-| `perms`       | Manage per-action moderation permissions |
+| `permission`  | Manage per-action moderation permissions |
 | `threshold`   | Manage automatic escalation rules      |
 
 ### Configuration — `/`
@@ -237,7 +227,9 @@ docker compose ps
 
 ### Slash commands do not appear
 
-Global command registration can take up to an hour to propagate. Set `GUILD_ID` in `.env` while developing to register commands to a single guild instantly.
+By default commands register globally, and global registration can take up to an hour to propagate. While developing, set `DEVELOPMENT_GUILD_IDS` in `.env` to a comma-separated list of guild IDs — commands register to those guilds instead and show up immediately. The bot must already be a member of every guild you list.
+
+The startup log prints every command that loaded, so you can tell a broken command apart from one you are simply waiting on Discord to publish.
 
 ---
 

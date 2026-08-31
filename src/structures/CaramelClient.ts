@@ -5,6 +5,7 @@ import pino from 'pino';
 import { join } from 'path';
 import { CacheManager } from '../database/CacheManager';
 import { CaramelUserError } from '../lib/structures/Errors';
+import { developmentGuildIds } from '../lib/constants/devGuilds';
 
 
 // Caramel client ──────────────────
@@ -71,7 +72,7 @@ export class CaramelClient extends SapphireClient {
                 repliedUser: false
             },
             applicationCommands: {
-                developmentGuildIds: ['1195184839758975089'],
+                developmentGuildIds,
                 registries: {
                     processLogging: {
                         logInit: false,
