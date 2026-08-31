@@ -1,5 +1,11 @@
-# Local development stack. `docker compose up -d --build` brings up
-# PostgreSQL, Redis and the bot, applies migrations and connects to Discord.
+# Local development stack.
+#
+#   docker compose up -d                      PostgreSQL + Redis only — run the
+#                                             bot from your editor against these
+#   docker compose --profile bot up -d --build  ...and the bot in a container too
+#
+# The bot sits behind a profile so the default `up` leaves it to you. Use the
+# profile to exercise the real production image.
 
 services:
   postgres:
@@ -39,6 +45,8 @@ services:
     build: .
     container_name: caramel-bot
     restart: unless-stopped
+    # Not started by a plain `docker compose up` — see the header.
+    profiles: ["bot"]
     env_file: .env
     environment:
       # Inside the compose network the services are reachable by name on their

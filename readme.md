@@ -102,40 +102,49 @@ cp .env.example .env
 
 Fill in `.env`. At minimum you need `DISCORD_TOKEN`; the database and Redis values already point at what Compose provisions. Set `DEVELOPMENT_GUILD_IDS` to your test server's ID so slash commands appear there instantly instead of waiting on global propagation.
 
-### 2. Run everything
+### 2. Start the infrastructure
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-That is the whole setup. Compose builds the bot image, starts PostgreSQL and Redis, waits for both to pass their health checks, applies pending migrations, and connects to Discord. Three containers appear in Docker Desktop:
+This starts PostgreSQL and Redis and waits for both to report healthy. Host ports are deliberately non-default so they don't collide with a local PostgreSQL or Redis:
 
 | Container          | Service    | Host port | Internal port |
 | ------------------ | ---------- | --------- | ------------- |
-| `caramel-bot`      | Bot        | 4000      | 4000          |
 | `caramel-postgres` | PostgreSQL | **5433**  | 5432          |
 | `caramel-redis`    | Redis      | **6380**  | 6379          |
 
-Host ports are deliberately non-default so they don't collide with a local PostgreSQL or Redis.
+### 3. Run the bot
 
 ```bash
-docker compose logs -f bot   # follow the bot
-docker compose down          # stop (add -v to also wipe the data volumes)
-```
-
-### Running the bot outside Docker
-
-For hot-reload while developing, keep only the infrastructure in Docker and run the bot on the host:
-
-```bash
-docker compose up -d postgres redis
 npm install
 npx prisma generate
 npx prisma migrate deploy
 npm run dev
 ```
 
-The `DATABASE_URL` and `REDIS_URL` in `.env` are written for this case — they point at `localhost:5433` and `localhost:6380`. The bot container doesn't use them; Compose overrides both with the internal service addresses.
+`npm run dev` runs the bot through `tsx watch`, so it restarts on every save. The `DATABASE_URL` and `REDIS_URL` in `.env` already point at the two containers.
+
+In VS Code, press **F5** instead — `.vscode/launch.json` ships two configurations, `Bot (debug)` with working breakpoints and `Bot (watch)` with hot-reload. Both bring the infrastructure up first, and `Ctrl+Shift+F5` restarts the bot.
+
+### Running the bot in Docker too
+
+The bot service sits behind a Compose profile, so the default `up` leaves it alone. Use the profile to exercise the same image that runs in production:
+
+```bash
+docker compose --profile bot up -d --build
+docker compose logs -f bot
+```
+
+That builds the image, waits on the health checks, applies pending migrations and connects to Discord — a fresh clone works on the first try. Compose overrides `DATABASE_URL` and `REDIS_URL` for that container with the internal service addresses, so the host-facing values in `.env` keep working for `prisma` commands run outside Docker.
+
+Don't run both at once: two processes sharing one bot token means Discord delivers every interaction twice.
+
+```bash
+docker compose down      # stop everything
+docker compose down -v   # ...and wipe the data volumes
+```
 
 ---
 
