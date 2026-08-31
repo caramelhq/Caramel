@@ -89,6 +89,7 @@ Two ideas hold the codebase together:
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) v18+
+- [pnpm](https://pnpm.io/) v10+ (`corepack enable` picks up the pinned version)
 - [Docker](https://www.docker.com/) and Docker Compose
 - A [Discord Application](https://discord.com/developers/applications) with a bot token
 
@@ -145,9 +146,9 @@ Production is the exception — there the bot does run in a container, built fro
 
 | Command         | Description                     |
 | --------------- | ------------------------------- |
-| `npm run dev`   | Start with hot-reload (tsx)     |
-| `npm run build` | Compile TypeScript to `dist/`   |
-| `npm run start` | Run the production build        |
+| `pnpm run dev`   | Start with hot-reload (tsx)     |
+| `pnpm run build` | Compile TypeScript to `dist/`   |
+| `pnpm run start` | Run the production build        |
 
 | Database command                       | Description              |
 | -------------------------------------- | ------------------------ |
@@ -156,7 +157,7 @@ Production is the exception — there the bot does run in a container, built fro
 | `npx prisma migrate dev --name <name>` | Create a new migration   |
 | `npx prisma studio`                    | Open the database GUI    |
 
-There are no automated tests. `npm run build` is the minimum check before calling a change done — `tsc` catches broken references across the whole tree.
+There are no automated tests. `pnpm run build` is the minimum check before calling a change done — `tsc` catches broken references across the whole tree.
 
 ---
 

@@ -2,17 +2,21 @@ FROM node:22-slim AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
 
-RUN npm ci
+# hoisted linker gives a flat node_modules, so the tree survives the COPY into
+# the runtime stage. pnpm's default symlinked layout does not travel cleanly.
+RUN pnpm install --frozen-lockfile --config.node-linker=hoisted
 
 COPY tsconfig.json ./
 COPY src ./src/
 
-RUN npx prisma generate
-RUN npm run build
+RUN pnpm exec prisma generate
+RUN pnpm run build
 
 
 FROM node:22-slim

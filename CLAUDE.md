@@ -9,18 +9,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Runtime | Node.js |
 | Framework | Sapphire Framework (Discord.js 14) |
 | Language | TypeScript |
-| Package manager | npm |
+| Package manager | pnpm |
 | DB | PostgreSQL (Prisma) + Redis (ioredis/BullMQ) |
 
 ## Commands
 
 ```bash
-npm run dev    # Development with tsx watch
-npm run build  # Compile TypeScript → dist/
-npm run start  # Production with node dist/index.js
+pnpm run dev    # Development with tsx watch
+pnpm run build  # Compile TypeScript → dist/
+pnpm run start  # Production with node dist/index.js
 ```
 
-There are no automated tests. The minimum check before calling anything done is `npm run build` — `tsc` alone catches broken references across the tree. To actually exercise a change: `npm run dev` locally, or rebuild on the server.
+There are no automated tests. The minimum check before calling anything done is `pnpm run build` — `tsc` alone catches broken references across the tree. To actually exercise a change: `pnpm run dev` locally, or rebuild on the server.
 
 ## Infrastructure (server 137.184.66.155)
 
