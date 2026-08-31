@@ -1,11 +1,35 @@
 import { InternationalizationContext } from '@sapphire/plugin-i18next';
-import { SapphireClient, container, LogLevel } from '@sapphire/framework';
+import {
+    ApplicationCommandRegistries,
+    RegisterBehavior,
+    SapphireClient,
+    container,
+    LogLevel
+} from '@sapphire/framework';
 import { ActivityType, GatewayIntentBits, Message } from 'discord.js';
 import pino from 'pino';
 import { join } from 'path';
 import { CacheManager } from '../database/CacheManager';
 import { CaramelUserError } from '../lib/structures/Errors';
 import { developmentGuildIds } from '../lib/constants/devGuilds';
+
+
+// Application command registration ──────────────────
+//
+// BulkOverwrite replaces the whole command set on every boot instead of
+// patching commands one by one. Without it, a command deleted from the source
+// stays registered with Discord forever — it keeps showing up in the picker
+// and fails when used.
+//
+// setDefaultGuildIds is the supported way to scope registration to specific
+// guilds. The `applicationCommands.developmentGuildIds` client option does not
+// exist in Sapphire and is silently ignored.
+
+ApplicationCommandRegistries.setDefaultBehaviorWhenNotIdentical(RegisterBehavior.BulkOverwrite);
+
+if (developmentGuildIds.length) {
+    ApplicationCommandRegistries.setDefaultGuildIds(developmentGuildIds);
+}
 
 
 // Caramel client ──────────────────
@@ -72,7 +96,6 @@ export class CaramelClient extends SapphireClient {
                 repliedUser: false
             },
             applicationCommands: {
-                developmentGuildIds,
                 registries: {
                     processLogging: {
                         logInit: false,

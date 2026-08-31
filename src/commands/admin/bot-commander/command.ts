@@ -1,5 +1,4 @@
 import { Subcommand } from '@sapphire/plugin-subcommands';
-import { developmentGuildOptions } from '../../../lib/constants/devGuilds';
 import { ApplyOptions } from '@sapphire/decorators';
 import { GuildMember, PermissionFlagsBits } from 'discord.js';
 import adminEn from '../../../lib/i18n/en-US/admincommands.json';
@@ -66,8 +65,7 @@ export class BotCommanderCommand extends Subcommand {
                                     .setDescription(adminEn.command.botCommander.options.member)
                                     .setDescriptionLocalizations({ 'es-ES': adminEs.command.botCommander.options.member })
                             )
-                    ),
-            developmentGuildOptions()
+                    )
         );
     }
 

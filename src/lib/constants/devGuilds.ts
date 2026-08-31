@@ -12,11 +12,3 @@ export const developmentGuildIds: string[] =
     process.env.DEVELOPMENT_GUILD_IDS?.split(',')
         .map((id) => id.trim())
         .filter(Boolean) ?? [];
-
-/**
- * Registration options for a command that should follow the development guilds.
- * Returns undefined when none are configured, so the command registers globally.
- */
-export function developmentGuildOptions() {
-    return developmentGuildIds.length ? { guildIds: developmentGuildIds } : undefined;
-}
