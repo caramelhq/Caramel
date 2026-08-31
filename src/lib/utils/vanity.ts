@@ -9,6 +9,17 @@ import { getVanityWelcomeLayout } from '../layouts/vanityLayouts';
 
 const webhookCache = new Map<string, WebhookClient>();
 
+/**
+ * How long the channel stays quiet about a member after announcing them. The
+ * role follows the status in real time — this only governs the announcement, so
+ * flipping the vanity off and on gets the role back every time without the
+ * channel hearing about it again.
+ *
+ * A day is long enough that toggling buys nothing and short enough that someone
+ * who genuinely leaves and comes back still gets welcomed.
+ */
+const WELCOME_COOLDOWN_SECONDS = 24 * 60 * 60;
+
 async function getVanityWebhook(channel: TextChannel): Promise<WebhookClient | null> {
     if (webhookCache.has(channel.id)) return webhookCache.get(channel.id)!;
     
@@ -112,23 +123,42 @@ export async function checkVanity(member: GuildMember, hasVanity: boolean) {
             await member.roles.add(role);
             logger.info(`➕ [VANITY] Role added to ${member.user.tag}`);
 
-            if (logChannelId) {
-                const channel = (guild.channels.cache.get(logChannelId) ?? await guild.channels.fetch(logChannelId).catch(() => null)) as TextChannel | null;
-                                
-                if (channel) {
-                    const avatar = member.user.displayAvatarURL({ extension: 'png', size: 512 });
-                    const welcomeLayout = getVanityWelcomeLayout(member.id, vanityRoleId, avatar, vanityString);
-                                        
-                    try {
-                        const webhookClient = await getVanityWebhook(channel);
-                        if (webhookClient) await webhookClient.send(welcomeLayout as any);
-                        logger.info(`[VANITY] Message sent successfully`);
-                    } catch (err) {
-                        logger.error(`[LOG-ERROR] ${err}`);
-                    }
-                }
-            } else {
+            if (!logChannelId) {
                 logger.warn(`[VANITY] No logChannelId configured for guild ${guild.id}`);
+                return;
+            }
+
+            const channel = (guild.channels.cache.get(logChannelId) ?? await guild.channels.fetch(logChannelId).catch(() => null)) as TextChannel | null;
+            if (!channel) return;
+
+            // Claimed before sending rather than marked after, and with NX so two
+            // jobs racing for the same member cannot both take the slot. Everything
+            // that can fail from here on hands it back.
+            const welcomeKey = `vanity:welcomed:${guild.id}:${member.id}`;
+            const claimed = await redis.set(welcomeKey, '1', 'EX', WELCOME_COOLDOWN_SECONDS, 'NX');
+
+            if (claimed === null) {
+                logger.info(`[VANITY] Welcome for ${member.user.tag} skipped — announced within the last 24h.`);
+                return;
+            }
+
+            const avatar = member.user.displayAvatarURL({ extension: 'png', size: 512 });
+            const welcomeLayout = getVanityWelcomeLayout(member.id, vanityRoleId, avatar, vanityString);
+
+            try {
+                const webhookClient = await getVanityWebhook(channel);
+                if (!webhookClient) {
+                    await redis.del(welcomeKey).catch(() => undefined);
+                    logger.warn(`[VANITY] No webhook available in #${channel.name}; welcome not sent.`);
+                    return;
+                }
+
+                await webhookClient.send(welcomeLayout as any);
+                logger.info(`[VANITY] Message sent successfully`);
+            } catch (err) {
+                // A failed send must not cost them the welcome for a whole day.
+                await redis.del(welcomeKey).catch(() => undefined);
+                logger.error(`[LOG-ERROR] ${err}`);
             }
 
         } else if (!hasVanity && hasRole) {
