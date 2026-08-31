@@ -4,7 +4,8 @@ import modulesEsEs from '../../../../../lib/i18n/es-ES/modules.json';
 export const moduleIds = {
     vanity: 'vanity',
     mod: 'mod',
-    tickets: 'tickets'
+    tickets: 'tickets',
+    counter: 'counter'
 } as const;
 
 type ModuleId = (typeof moduleIds)[keyof typeof moduleIds];
@@ -31,6 +32,11 @@ export const moduleChoices = [
         name: moduleDisplayNameLocales.en.tickets,
         value: moduleIds.tickets,
         nameLocalizations: { 'es-ES': moduleDisplayNameLocales.es.tickets }
+    },
+    {
+        name: moduleDisplayNameLocales.en.counter,
+        value: moduleIds.counter,
+        nameLocalizations: { 'es-ES': moduleDisplayNameLocales.es.counter }
     }
 ] as const;
 
@@ -63,7 +69,8 @@ export const moduleDefaults = {
     mutedRoleName: 'Muted',
     thresholdMode: 'warns',
     ticketsTranscriptChannelName: 'ticket-transcripts',
-    ticketsLogChannelName: 'ticket-logs'
+    ticketsLogChannelName: 'ticket-logs',
+    counterChannelName: 'server-stats'
 } as const;
 
 export const moduleConfirmInputs = ['yes', 'si'] as const;

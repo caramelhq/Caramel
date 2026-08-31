@@ -160,7 +160,7 @@ export function getModuleLayout(
   guild: Guild,
   labels: any,
 ) {
-  const moduleConfigKeyMap: Record<string, string> = { tickets: 'ticketsModule' };
+  const moduleConfigKeyMap: Record<string, string> = { tickets: 'ticketsModule', counter: 'counterModule' };
   const moduleConfigKey = moduleConfigKeyMap[moduleName] ?? `${moduleName}Module`;
   const isEnabled = (config as any)[moduleConfigKey] as boolean;
   const bullet = (value: unknown) =>
@@ -213,6 +213,19 @@ export function getModuleLayout(
       `${bullet(config.modThresholdsEnabled)} **${
         labels.thresholds
       }**: \`${thresholdStatus}\``,
+    ].join("\n");
+  }
+
+  if (moduleName === "counter") {
+    details = [
+      `${bullet((config as any).counterChannelId)} **${labels.channel}**: ${
+        (config as any).counterChannelId
+          ? `<#${(config as any).counterChannelId}>`
+          : `\`${labels.notSet}\``
+      }`,
+      `${bullet((config as any).counterMessageId)} **${labels.message}**: \`${
+        (config as any).counterMessageId || labels.notSet
+      }\``,
     ].join("\n");
   }
 

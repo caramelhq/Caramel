@@ -33,6 +33,16 @@ export class ReadyListener extends Listener {
             container.logger.error('[SYNC] Failed to warm up Redis cache:', error);
         }
 
+        // Start the member counter ──────────
+        // After the cache warm-up: the service reads guild config straight from
+        // PostgreSQL but relies on the Redis module flag on every tick.
+
+        try {
+            await container.counterService.start();
+        } catch (error) {
+            container.logger.error('[COUNTER] Failed to start:', error);
+        }
+
         // Debug loaded commands ──────────
         const commands = container.stores.get('commands');
         container.logger.info(`🚀 [LOADER] Loaded ${commands.size} commands.`);

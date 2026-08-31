@@ -40,6 +40,11 @@ model GuildConfig {
     thresholdMode          String   @default("modular") @map("threshold_mode")
     caseCount              Int      @default(0) @map("case_count")
 
+    // Counter module ──────────
+    counterModule    Boolean  @default(false) @map("counter_module")
+    counterChannelId String?  @map("counter_channel_id")
+    counterMessageId String?  @map("counter_message_id")
+
     // Tickets module ──────────
     ticketsModule              Boolean  @default(false) @map("tickets_module")
     ticketsPanelChannelId      String?  @map("tickets_panel_channel_id")

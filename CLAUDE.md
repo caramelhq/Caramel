@@ -33,13 +33,14 @@ There are no automated tests. The minimum check before calling anything done is 
 
 ## Current scope
 
-The bot is deliberately reduced to three modules. Music, AutoMod, the advanced logging system, Clan Tag and the fun/info commands were all removed.
+The bot is deliberately reduced to a small set of modules. Music, AutoMod, the advanced logging system, Clan Tag and the fun/info commands were all removed.
 
 | Module | What it does |
 |--------|--------------|
 | **Moderation** | Sanctions, cases, thresholds, custom permissions |
 | **Vanity Tracker** | Grants a role to members displaying a keyword in their status |
 | **Tickets** | Panel, opening, claiming, transcripts, auto-close |
+| **Member Counter** | Publishes a live online/total/voice message and keeps it edited |
 
 Around them: guild configuration (`language`, `prefix`, `mention`, `module`) and infrastructure (Prisma, Redis, cache, StatsServer).
 
@@ -75,7 +76,7 @@ src/
 │   ├── messages/                     # MentionListener, TicketMessageListener, CommandDebug
 │   └── tickets/                      # TicketChannelDeleteListener
 ├── workers/                          # BullMQ: Vanity, Mute, TempBan, SilentBan, Ticket
-├── services/SilentBanService.ts
+├── services/                         # SilentBanService, CounterService
 ├── validators/ModuleValidator.ts     # Does the module have the minimum to be enabled?
 ├── lib/
 │   ├── layouts/                      # Components V2 (ui.ts is the base for everything)
@@ -122,7 +123,7 @@ Thresholds (`ModThreshold`) drive automatic escalation: N warns → mute, N mute
 
 ### Modules and configuration
 
-`/module setup|settings|enable|disable|reset <module>` manages the three modules. Adding a new one means touching, in order:
+`/module setup|settings|enable|disable|reset <module>` manages the modules. Adding a new one means touching, in order:
 
 1. `command-helpers/config/module/core/constants/index.ts` — `moduleIds` + `moduleChoices`
 2. `command-helpers/config/module/core/setup/<module>Setup.ts` — the wizard

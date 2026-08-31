@@ -12,6 +12,7 @@ import { setupMuteWorker } from './workers/MuteWorker';
 import { setupTempBanWorker } from './workers/TempBanWorker';
 import { setupTicketWorker } from './workers/TicketWorker';
 import { startStatsServer } from './api/StatsServer';
+import { CounterService } from './services/CounterService';
 
 
 // Bootstrap ──────────────────
@@ -31,6 +32,9 @@ async function bootstrap() {
         container.tempBanWorker   = setupTempBanWorker();
         container.ticketWorker    = setupTicketWorker();
 
+        // Started in the Ready listener: it needs the guild cache populated.
+        container.counterService  = new CounterService(client);
+
         await client.start(process.env.DISCORD_TOKEN!);
     } catch (error) {
         if (container.logger) {
@@ -45,8 +49,14 @@ async function bootstrap() {
 
 // Graceful shutdown ──────────
 
-process.on('SIGINT',  async () => { await prisma.$disconnect(); process.exit(0); });
-process.on('SIGTERM', async () => { await prisma.$disconnect(); process.exit(0); });
+async function shutdown() {
+    await container.counterService?.stop().catch(() => undefined);
+    await prisma.$disconnect();
+    process.exit(0);
+}
+
+process.on('SIGINT',  shutdown);
+process.on('SIGTERM', shutdown);
 
 
 // Container type augmentation ──────────
@@ -58,6 +68,7 @@ declare module '@sapphire/pieces' {
         muteWorker:      ReturnType<typeof setupMuteWorker>;
         tempBanWorker:   ReturnType<typeof setupTempBanWorker>;
         ticketWorker:    ReturnType<typeof setupTicketWorker>;
+        counterService:  CounterService;
     }
 }
 

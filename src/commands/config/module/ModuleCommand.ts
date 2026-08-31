@@ -4,6 +4,7 @@ import { CaramelUserError } from '../../../lib/structures/Errors';
 import modulesEnUs from '../../../lib/i18n/en-US/modules.json';
 import modulesEsEs from '../../../lib/i18n/es-ES/modules.json';
 import {
+    handleCounterSetup,
     handleDisable,
     handleEnable,
     handleModSetup,
@@ -109,6 +110,7 @@ export class ModuleCommand extends Subcommand {
         if (moduleValue === moduleIds.vanity) return handleVanitySetup(interaction);
         if (moduleValue === moduleIds.mod) return handleModSetup(interaction);
         if (moduleValue === moduleIds.tickets) return handleTicketsSetup(interaction);
+        if (moduleValue === moduleIds.counter) return handleCounterSetup(interaction);
 
         throw new CaramelUserError('errors:unexpected');
     }

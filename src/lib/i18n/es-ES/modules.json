@@ -51,7 +51,8 @@
     "displayNames": {
       "vanity": "Vanity Tracker",
       "mod": "Moderación",
-      "tickets": "Tickets"
+      "tickets": "Tickets",
+      "counter": "Contador de miembros"
     },
     "errors": {
       "validatorNotFound": "`❌` Error interno: validador no encontrado.",
@@ -138,6 +139,20 @@
           "supporterRolesPlaceholder": "ej. 123456789, 987654321"
         },
         "panelDescription": "Haz clic en el botón de abajo para abrir un ticket de soporte. Nuestro equipo te atenderá lo antes posible."
+      },
+      "counter": {
+        "modal": {
+          "title": "Configuración del contador",
+          "channelLabel": "ID o nombre del canal (opcional)",
+          "channelPlaceholder": "Vacío para crear #server-stats automáticamente"
+        },
+        "errors": {
+          "wrongChannelType": "`❌` El contador necesita un canal de texto o de anuncios.",
+          "missingPermissions": "`❌` Necesito **Ver canal** y **Enviar mensajes** en <#{{id}}>."
+        },
+        "summary": {
+          "published": "Contador publicado en <#{{id}}>"
+        }
       }
     },
     "reset": {

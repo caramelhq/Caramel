@@ -53,6 +53,21 @@ export const ModuleValidators: Record<string, (config: any, guild: any) => Promi
         return { isValid: true };
     },
 
+    // Counter validator ──────────
+
+    counter: async (config, guild) => {
+        if (!config.counterChannelId) {
+            return { isValid: false, missing: ['The **counter channel** has not been configured.'] };
+        }
+
+        const channel = await guild.channels.fetch(config.counterChannelId).catch(() => null);
+        if (!channel) {
+            return { isValid: false, missing: ['The configured **counter channel** no longer exists.'] };
+        }
+
+        return { isValid: true };
+    },
+
     // Tickets validator ──────────
 
     tickets: async (config, guild) => {

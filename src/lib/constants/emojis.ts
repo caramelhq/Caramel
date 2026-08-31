@@ -20,6 +20,11 @@ export const Emojis = {
     date_emoji: '<:clock:1485096655651868752>',
     slowmode_emoji: '<:slowmode:1485107865818632313>',
 
+    // Counter
+    counter_online_emoji:  '<:online_dot:1543859913116229673>',
+    counter_total_emoji:   '<:offline_dot:1543859923488743464>',
+    counter_voice_emoji:   '<:mic_stat:1543859933756526623>',
+
     // Vanity
     vanity_welcome_emoji: '<a:thank_you:1484968518100324544>',
 

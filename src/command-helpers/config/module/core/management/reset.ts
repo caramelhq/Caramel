@@ -132,6 +132,25 @@ const RESET_MAP: Record<string, ResetHandler> = {
     });
     await CacheManager.syncGuild(guildId, updated);
   },
+  counter: async (guildId) => {
+    const config = await prisma.guildConfig.findUnique({ where: { guildId } });
+    if (!config) return;
+
+    // Deletes the published message and stops tracking. The channel is left
+    // alone: unlike the other modules the bot may not have created it, and a
+    // stats channel usually has other things in it.
+    await container.counterService.remove(guildId);
+
+    const updated = await prisma.guildConfig.update({
+      where: { guildId },
+      data: {
+        counterModule: false,
+        counterChannelId: null,
+        counterMessageId: null,
+      },
+    });
+    await CacheManager.syncGuild(guildId, updated);
+  },
 };
 
 async function getResetDeletions(
@@ -241,6 +260,21 @@ async function getResetDeletions(
         interaction,
         "modules:module.reset.deletions.configOnly",
       ),
+    );
+  }
+
+  if (moduleName === moduleIds.counter) {
+    if (config.counterChannelId) {
+      deletions.push(
+        await resolveKey(
+          interaction,
+          "modules:module.reset.deletions.unlinkChannel",
+          { id: config.counterChannelId },
+        ),
+      );
+    }
+    deletions.push(
+      await resolveKey(interaction, "modules:module.reset.deletions.configOnly"),
     );
   }
 

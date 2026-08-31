@@ -44,6 +44,17 @@ export class CacheManager {
             pipeline.set(`mod:threshold_mode:${guildId}`, config.thresholdMode);
 
 
+            // Counter module ──────────
+
+            if ((config as any).counterChannelId) pipeline.set(`counter:channel:${guildId}`, (config as any).counterChannelId);
+            else pipeline.del(`counter:channel:${guildId}`);
+
+            if ((config as any).counterMessageId) pipeline.set(`counter:message:${guildId}`, (config as any).counterMessageId);
+            else pipeline.del(`counter:message:${guildId}`);
+
+            pipeline.set(`counter:module:${guildId}`, String((config as any).counterModule));
+
+
             // Tickets module ──────────
 
             if ((config as any).ticketsPanelChannelId) pipeline.set(`tickets:panel_channel:${guildId}`, (config as any).ticketsPanelChannelId);

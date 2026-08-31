@@ -42,6 +42,9 @@ export async function handleSettings(interaction: Subcommand.ChatInputCommandInt
         labels.thresholds = t('layouts:settings.mod.thresholds');
         labels.modeModular = t('layouts:settings.mod.modeModular');
         labels.modeAllActions = t('layouts:settings.mod.modeAllActions');
+    } else if (moduleValue === moduleIds.counter) {
+        labels.channel = t('layouts:settings.counter.channel');
+        labels.message = t('layouts:settings.counter.message');
     } else if (moduleValue === moduleIds.tickets) {
         labels.panelChannel = t('layouts:settings.tickets.panelChannel');
         labels.category = t('layouts:settings.tickets.category');

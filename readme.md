@@ -15,7 +15,7 @@
 
 Caramel is a modular Discord bot built with the [Sapphire Framework](https://sapphirejs.dev/) and TypeScript, backed by PostgreSQL and Redis.
 
-It is deliberately small. Three modules ship today — moderation, vanity tracker and tickets — and each one can be set up, enabled, disabled or factory reset per guild without touching the others. New modules are added on top of that seam rather than bolted onto a monolith.
+It is deliberately small. Four modules ship today — moderation, vanity tracker, tickets and a member counter — and each one can be set up, enabled, disabled or factory reset per guild without touching the others. New modules are added on top of that seam rather than bolted onto a monolith.
 
 ---
 
@@ -26,6 +26,8 @@ It is deliberately small. Three modules ship today — moderation, vanity tracke
 **Vanity Tracker** — Watches custom statuses for a configured keyword and grants or removes a reward role accordingly. Role changes are queued through BullMQ so presence traffic never blocks the gateway.
 
 **Tickets** — A panel users open tickets from, supporter claiming, message transcripts, and scheduled auto-close for inactive threads.
+
+**Member Counter** — Publishes one message showing online members, total members and members in voice, then keeps editing it in place. Online and total come from Discord's approximate counts, so the module costs one request per tick regardless of how large the server is; voice is exact, straight off the gateway. A tick where nothing changed makes no edit at all.
 
 ---
 

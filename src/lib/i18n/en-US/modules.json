@@ -51,7 +51,8 @@
     "displayNames": {
       "vanity": "Vanity Tracker",
       "mod": "Moderation",
-      "tickets": "Tickets"
+      "tickets": "Tickets",
+      "counter": "Member Counter"
     },
     "errors": {
       "validatorNotFound": "`❌` Internal error: validator not found.",
@@ -138,6 +139,20 @@
           "supporterRolesPlaceholder": "e.g. 123456789, 987654321"
         },
         "panelDescription": "Click the button below to open a support ticket. Our team will assist you as soon as possible."
+      },
+      "counter": {
+        "modal": {
+          "title": "Member Counter Setup",
+          "channelLabel": "Channel ID or name (optional)",
+          "channelPlaceholder": "Leave empty to auto-create #server-stats"
+        },
+        "errors": {
+          "wrongChannelType": "`❌` The counter needs a text or announcement channel.",
+          "missingPermissions": "`❌` I need **View Channel** and **Send Messages** in <#{{id}}>."
+        },
+        "summary": {
+          "published": "Counter published in <#{{id}}>"
+        }
       }
     },
     "reset": {

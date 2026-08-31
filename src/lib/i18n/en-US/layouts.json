@@ -27,6 +27,10 @@
       "transcriptChannel": "Transcript Channel",
       "logChannel": "Log Channel",
       "supporterRoles": "Supporter Roles"
+    },
+    "counter": {
+      "channel": "Channel",
+      "message": "Message ID"
     }
   }
 }
