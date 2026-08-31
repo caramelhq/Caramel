@@ -21,9 +21,9 @@ export const Emojis = {
     slowmode_emoji: '<:slowmode:1485107865818632313>',
 
     // Counter
-    counter_online_emoji:  '<:online_dot:1543859913116229673>',
-    counter_total_emoji:   '<:offline_dot:1543859923488743464>',
-    counter_voice_emoji:   '<:mic_stat:1543859933756526623>',
+    counter_online_emoji:  '<:online_members:1544069154716254328>',
+    counter_total_emoji:   '<:members_in_guild:1544069165776638134>',
+    counter_voice_emoji:   '<:in_voice:1544069174538543164>',
 
     // Vanity
     vanity_welcome_emoji: '<a:thank_you:1484968518100324544>',
